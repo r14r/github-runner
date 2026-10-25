@@ -1,0 +1,7 @@
+# Runner credentials and live registration; never commit.
+.local/
+# Local test/IDE caches
+.pytest_cache/
+__pycache__/
+.venv/
+.DS_Store
