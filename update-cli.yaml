@@ -1,0 +1,93 @@
+schemaVersion: 2
+project:
+  name: GitHub Runner
+  slug: github-runner
+  type: generic
+defaults:
+  timeout: 15m
+  failFast: true
+requirements:
+  commands: [bash, python3, tar]
+  optionalCommands: [just, gh]
+run:
+  description: Start previously registered runner
+  cwd: .
+  command: just run
+workflows:
+  bootstrap:
+    tasks: [bootstrap]
+  setup:
+    tasks: [setup]
+  precommit:
+    tasks: [test]
+  test:
+    tasks: [test]
+  build:
+    tasks: [build]
+  ci:
+    tasks: [build]
+  install:
+    tasks: [install]
+  run:
+    tasks: [run]
+  healthcheck:
+    tasks: [healthcheck]
+  doctor:
+    tasks: [doctor]
+  clean:
+    tasks: [clean]
+tasks:
+  bootstrap:
+    steps:
+      - id: bootstrap-dev
+        name: Prepare isolated test environment
+        shell: just bootstrap
+  setup:
+    steps:
+      - id: setup-check
+        name: Validate project metadata
+        shell: just setup
+  test:
+    requires: [bootstrap]
+    steps:
+      - id: syntax-check
+        name: Check Bash syntax
+        shell: just fmt-check
+      - id: python-tests
+        name: Execute regression tests
+        shell: just test
+  build:
+    requires: [test]
+    steps:
+      - id: package
+        name: Package runner management files
+        shell: just build
+      - id: verify-archive
+        name: Verify packaged artifact
+        shell: just verify-build
+  install:
+    requires: [build]
+    steps:
+      - id: host-install
+        name: Explicit runner provisioning and registration
+        shell: just install
+  run:
+    steps:
+      - id: start-service
+        name: Start registered runner service
+        shell: just run
+  healthcheck:
+    steps:
+      - id: check-service
+        name: Check registered runner service
+        shell: just status
+  doctor:
+    steps:
+      - id: host-check
+        name: Read-only host prerequisite verification
+        shell: just doctor
+  clean:
+    steps:
+      - id: remove-dist
+        name: Remove generated archives only
+        shell: just clean
