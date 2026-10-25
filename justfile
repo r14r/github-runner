@@ -23,7 +23,7 @@ fmt-check:
 lint: fmt-check
 precommit: test
 
-test: fmt-check
+test: bootstrap fmt-check
     @test -x .venv/bin/python || { echo "Run just bootstrap first" >&2; exit 1; }
     .venv/bin/python -m pytest -q tests
 
