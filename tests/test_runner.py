@@ -16,7 +16,7 @@ def test_provisioning_includes_runner_label_and_unprivileged_service():
     assert "gh api --method POST" in mac
     assert "./svc.sh install" in mac
     assert "sudo ./svc.sh" not in mac
-    assert '"Darwin"' in (ROOT / "doctor.sh").read_text()
+    assert 'Darwin)' in (ROOT / "doctor.sh").read_text()
 
 
 
