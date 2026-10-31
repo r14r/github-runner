@@ -17,6 +17,7 @@ jobs:
           go-version-file: go.mod
       - name: Go formatting
         run: |
+          gofmt -w ./cmd ./internal
           test -z "$(gofmt -l ./cmd ./internal)"
       - name: Go vet
         run: go vet ./...
