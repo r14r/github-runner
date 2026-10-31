@@ -53,7 +53,7 @@ func TestShortCommandsDispatchAndInstallOrder(t *testing.T) {
  t.Setenv("RUNNER_TEST_CALLS",logfile)
  exe:=filepath.Join(root,"bin")
  if err:=run([]string{"install","r14r/BookBuilder","--allow-public"},exe,root);err!=nil{t.Fatal(err)}
- for _,command:=range []string{"start","stop","Status","Monitor"} {
+ for _,command:=range []string{"start","stop","Status","Monitor","refresh"} {
   if err:=run([]string{command,"r14r/BookBuilder"},exe,root);err!=nil{t.Fatal(err)}
  }
  b,err:=os.ReadFile(logfile);if err!=nil{t.Fatal(err)}
@@ -66,6 +66,7 @@ func TestShortCommandsDispatchAndInstallOrder(t *testing.T) {
   filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder stop",
   filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder status",
   filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder monitor",
+  filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder replace-container",
  }
  if len(lines)!=len(expected) {t.Fatalf("commands %q",lines)}
  for i,want:=range expected {
