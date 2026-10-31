@@ -149,7 +149,7 @@ func (r dockerRunner) download() error {
 		return err
 	}
 	if r.Profile == "bookbuilder" {
-		doctorPath := filepath.Join(r.Assets, "doctor-linux.sh")
+		doctorPath := filepath.Join(r.Assets, "scripts", "doctor-linux.sh")
 		body, err := os.ReadFile(doctorPath)
 		if err != nil {
 			return err
