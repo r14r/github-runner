@@ -14,3 +14,12 @@ Private Registrierungsdateien `.runner`, `.credentials`, `_work` und `_diag` ble
 **Datum:** 2026-10-25 · **Status:** Accepted
 
 `RUNNER_REPO` und `RUNNER_LABEL` sind anpassbar; voreingestellt ist das ursprüngliche BookBuilder-Repository und das Label `bookbuilder`. Der Host-Doctor ist weiterhin ein versioniertes BookBuilder-Profil (Python 3.12, PHP 8.2, Java 21, Typst 0.15.1). Keine pauschale Kompatibilität mit beliebigen Anwendungsprojekten behaupten.
+
+## D-004 – Multi-Repository-Runners über Colima
+**Datum:** 2026-10-31 · **Status:** Accepted in feature branch
+
+`runner/` erweitert den bestehenden Manager für zusätzliche repository-spezifische
+Docker-/Colima-Runner. Die bisherigen BookBuilder-Registrierungen und nativen
+Installationen bleiben unangetastet. Docker-Socket-Zugriff ist ausdrücklich
+opt-in; die Konfiguration erzeugt zunächst nur einen Review-PR.
+Betriebszustand und Credentials bleiben außerhalb Git unter `.local/`.
