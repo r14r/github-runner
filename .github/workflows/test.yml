@@ -55,4 +55,4 @@ jobs:
       - name: Validate requirements in actual image
         run: |
           docker run --rm -i --platform linux/amd64 \
-            --entrypoint bash github-actions-runner-ci:bookbuilder -s < doctor-linux.sh
+            --entrypoint bash github-actions-runner-ci:bookbuilder -s < scripts/doctor-linux.sh
