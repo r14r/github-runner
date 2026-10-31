@@ -111,11 +111,11 @@ func TestRegisterFlagParsing(t *testing.T) {
 	}
 }
 func TestSetupOptions(t *testing.T) {
-	o, e := parseSetup([]string{"r14r/BookBuilder", "--workflow", ".github/workflows/ci.yml", "--job", "python", "--allow-public"})
+	o, e := parseSetup([]string{"--repo", "r14r/BookBuilder", "--workflow", ".github/workflows/ci.yml", "--job", "python", "--allow-public"})
 	if e != nil || o.repo != "r14r/BookBuilder" || len(o.workflows) != 1 || o.jobs[0] != "python" || !o.allowPublic {
 		t.Fatalf("%+v: %v", o, e)
 	}
-	for _, args := range [][]string{nil, {"bad"}, {"r14r/BookBuilder", "--workflow"}, {"r14r/BookBuilder", "--unknown"}} {
+	for _, args := range [][]string{nil, {"bad"}, {"--repo", "r14r/BookBuilder", "--workflow"}, {"--repo", "r14r/BookBuilder", "--unknown"}} {
 		if _, e := parseSetup(args); e == nil {
 			t.Errorf("accepted %v", args)
 		}
