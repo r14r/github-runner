@@ -77,3 +77,24 @@ just ci
 ```
 
 Die Regressionstests verwenden gemockte Dienste und GitHub CLI; echte Installations-/Registrierungstests auf macOS und Ubuntu bleiben eine separate Freigabebedingung.
+
+## Multi-Repository-Runners mit Docker/Colima (v0.1.2)
+
+Für macOS Monterey (Intel) kann ein Linux-x64-Runner in Docker/Colima laufen.
+Registrierungen und Workspaces bleiben in `.local/`; die bestehenden
+BookBuilder-Installer und Runner-Registrierungen werden nicht verändert.
+Die Bereitstellung ist **opt-in** und führt keine Registrierung bei CI-Tests aus.
+
+Siehe [RUNNER-EXTENSION.md](RUNNER-EXTENSION.md) und [runner/README.md](runner/README.md).
+
+```bash
+just runner-download r14r/website-builder
+just runner-register r14r/website-builder
+just runner-install-service r14r/website-builder
+just runner-start r14r/website-builder
+just runner-status r14r/website-builder
+just runner-pr r14r/website-builder discover-layouts
+```
+
+`runner-pr` eröffnet standardmäßig nur einen PR, ohne ihn automatisch zu mergen.
+Der Docker-Socket wird nur durch `RUNNER_DOCKER_SOCKET=1` freigegeben.

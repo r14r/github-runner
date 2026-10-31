@@ -1,0 +1,5 @@
+instances/
+checkouts/
+cache/
+.env
+.DS_Store

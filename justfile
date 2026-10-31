@@ -28,8 +28,8 @@ test: bootstrap fmt-check
     .venv/bin/python -m pytest -q tests
 
 # The archive contains only explicitly listed source files, not local credentials.
-build: test setup
-    @version="$(cat VERSION)"; mkdir -p dist; tar -czf "dist/github-runner-${version}.tar.gz" ./*.sh VERSION README.md SOURCE.md MACOS.md UBUNTU.md AGENTS.md CHANGELOG.md
+build: test runner-ci setup
+    @version="$(cat VERSION)"; mkdir -p dist; tar -czf "dist/github-runner-${version}.tar.gz" --exclude="__pycache__" --exclude="*.pyc" ./*.sh VERSION README.md SOURCE.md MACOS.md UBUNTU.md AGENTS.md CHANGELOG.md RUNNER-EXTENSION.md runner
     @just verify-build
 
 verify-build:
@@ -84,3 +84,32 @@ migrate-from-bookbuilder source:
 
 clean:
     rm -rf dist
+
+# Repository-scoped Docker/Colima runners (extension v0.1.2).
+runner-download repo:
+    bash runner/01-download.sh "{{repo}}"
+
+runner-register repo:
+    bash runner/02-configure.sh "{{repo}}"
+
+runner-install-service repo:
+    bash runner/04-run.sh "{{repo}}" install
+
+runner-start repo:
+    bash runner/04-run.sh "{{repo}}" start
+
+runner-stop repo:
+    bash runner/04-run.sh "{{repo}}" stop
+
+runner-status repo:
+    bash runner/04-run.sh "{{repo}}" status
+
+runner-monitor repo:
+    bash runner/04-run.sh "{{repo}}" monitor
+
+runner-pr repo job workflow=".github/workflows/ci.yml":
+    bash runner/03-setup.sh "{{repo}}" --workflow "{{workflow}}" --job "{{job}}"
+
+runner-ci:
+    @for f in runner/*.sh runner/lib/*.sh runner/docker/*.sh; do bash -n "$f"; done
+    python3 -m unittest discover -s tests -p test_runner_extension.py
