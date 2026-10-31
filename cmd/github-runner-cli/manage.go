@@ -269,6 +269,16 @@ func executeRemoval(plans []removePlan,deleteData bool)error{
     for _,p:=range plans{
         l:=p.Local
         fmt.Printf("Removing runner %s (%s)\n",l.Repository,l.Slug)
+        // GitHub job status can change after the preflight. Re-check it
+        // immediately before stopping or deregistering each runner.
+        if p.Remote!=nil {
+            current,err:=githubRunners(l.Repository)
+            if err!=nil{return err}
+            check,err:=matchedRegistration(l.Identity,current)
+            if err!=nil{return err}
+            if check==nil{return fmt.Errorf("runner %s changed on GitHub after preflight; refusing to continue",p.Remote.Name)}
+            if check.Busy{return fmt.Errorf("runner %s became busy; refusing to interrupt it",check.Name)}
+        }
         if existingContainer(l.Container){
             running,err:=commandOutput("","docker","container","inspect","--format","{{.State.Running}}",l.Container)
             if err!=nil{return err}
