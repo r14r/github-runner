@@ -1,86 +1,92 @@
 package main
 
-import (
+import(
  "os"
  "path/filepath"
  "strings"
  "testing"
 )
 
-func TestVersionAndHelp(t *testing.T) {
- cwd:=t.TempDir()
- for _,args:=range [][]string{{"version"},{"--help"},nil} {
-  if err:=run(args,filepath.Join(cwd,"bin"),cwd);err!=nil {t.Fatalf("%v: %v",args,err)}
- }
-}
-func TestMissingAssets(t *testing.T) {
- t.Setenv("GITHUB_RUNNER_CLI_ENV","")
- tmp:=t.TempDir()
- if _,err:=assetsDir(filepath.Join(tmp,"bin"),tmp);err==nil {t.Fatal("missing runtime assets accepted")}
-}
-func TestInvalidCommands(t *testing.T) {
- t.Setenv("GITHUB_RUNNER_CLI_ENV","")
- cwd,err:=os.Getwd();if err!=nil {t.Fatal(err)}
- root:=filepath.Join(cwd,"..","..")
- for _,args:=range [][]string{{"runner"},{"runner","unsupported"},{"runner","download"},{"host"},{"host","unknown"}} {
-  if err:=run(args,filepath.Join(root,"dist","github-runner-cli"),root);err==nil {t.Fatalf("accepted invalid args %v",args)}
- }
-}
-func TestAllEntrypointsExist(t *testing.T) {
- root:=filepath.Join("..","..")
- for _,file:=range runnerActions {
-  if _,err:=os.Stat(filepath.Join(root,"runner",file));err!=nil {t.Fatalf("missing %s: %v",file,err)}
- }
- for _,file:=range hostActions {
-  if _,err:=os.Stat(filepath.Join(root,file));err!=nil {t.Fatalf("missing %s: %v",file,err)}
- }
-}
-
-func TestShortCommandsDispatchAndInstallOrder(t *testing.T) {
+func testAssets(t *testing.T)string{
+ t.Helper()
  root:=t.TempDir()
- runner:=filepath.Join(root,"runner")
- if err:=os.MkdirAll(runner,0755);err!=nil {t.Fatal(err)}
- for _,name:=range []string{"01-download.sh","02-configure.sh","04-run.sh"} {
-  if err:=os.WriteFile(filepath.Join(runner,name),[]byte("# test stub\n"),0644);err!=nil{t.Fatal(err)}
+ for _,path:=range []string{"runner/docker/Dockerfile","runner/04-run.sh","doctor-linux.sh"}{
+  full:=filepath.Join(root,filepath.FromSlash(path))
+  if e:=os.MkdirAll(filepath.Dir(full),0755);e!=nil{t.Fatal(e)}
+  if e:=os.WriteFile(full,[]byte("fixture"),0644);e!=nil{t.Fatal(e)}
  }
- mockBin:=filepath.Join(root,"mock-bin")
- if err:=os.Mkdir(mockBin,0755);err!=nil{t.Fatal(err)}
- logfile:=filepath.Join(root,"calls.log")
- fakeBash:=[]byte("#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$RUNNER_TEST_CALLS\"\n")
- if err:=os.WriteFile(filepath.Join(mockBin,"bash"),fakeBash,0755);err!=nil{t.Fatal(err)}
- t.Setenv("PATH",mockBin+string(os.PathListSeparator)+os.Getenv("PATH"))
  t.Setenv("GITHUB_RUNNER_CLI_ENV",root)
- t.Setenv("RUNNER_TEST_CALLS",logfile)
- exe:=filepath.Join(root,"bin")
- if err:=run([]string{"install","r14r/BookBuilder","--allow-public"},exe,root);err!=nil{t.Fatal(err)}
- for _,command:=range []string{"start","stop","Status","Monitor","refresh"} {
-  if err:=run([]string{command,"r14r/BookBuilder"},exe,root);err!=nil{t.Fatal(err)}
- }
- b,err:=os.ReadFile(logfile);if err!=nil{t.Fatal(err)}
- lines:=strings.Split(strings.TrimSpace(string(b)),"\n")
- expected:=[]string{
-  filepath.Join(runner,"01-download.sh")+" r14r/BookBuilder",
-  filepath.Join(runner,"02-configure.sh")+" r14r/BookBuilder --if-needed --allow-public",
-  filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder install",
-  filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder start",
-  filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder stop",
-  filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder status",
-  filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder monitor",
-  filepath.Join(runner,"04-run.sh")+" r14r/BookBuilder replace-container",
- }
- if len(lines)!=len(expected) {t.Fatalf("commands %q",lines)}
- for i,want:=range expected {
-  if lines[i]!=want{t.Errorf("command %d: got %q, expected %q",i,lines[i],want)}
+ return root
+}
+func TestHelpAndVersion(t *testing.T){
+ for _,args:=range [][]string{nil,{"--help"},{"version"}}{
+  if e:=run(args,"/tmp/github-runner-cli",t.TempDir());e!=nil{t.Fatal(e)}
  }
 }
-func TestShortInstallRejectsUnsupportedOptions(t *testing.T) {
- root:=t.TempDir()
- t.Setenv("GITHUB_RUNNER_CLI_ENV",root)
+func TestAssetsError(t *testing.T){
+ t.Setenv("GITHUB_RUNNER_CLI_ENV",filepath.Join(t.TempDir(),"missing"))
+ if _,e:=assetsDir("/tmp/cli",t.TempDir());e==nil{t.Fatal("missing assets accepted")}
+}
+func TestBadArgumentsDoNotModifyRunnerState(t *testing.T){
+ root:=testAssets(t)
  for _,args:=range [][]string{
-  {"install"}, {"install","r14r/BookBuilder","--unknown"},
-  {"install","r14r/BookBuilder","--name"}, {"status"},
-  {"start","r14r/BookBuilder","unexpected"},
+  {"install"},{"install","r14r/BookBuilder","--bad"},
+  {"install","r14r/BookBuilder","--name"},
+  {"start"},{"stop","r14r/BookBuilder","extra"},
+  {"runner"},{"runner","unknown","r14r/BookBuilder"},
+  {"runner","register","invalid"},
+  {"host"},{"host","unknown"},
  }{
-  if err:=run(args,filepath.Join(root,"bin"),root);err==nil{t.Errorf("accepted invalid args %q",args)}
+  if e:=run(args,filepath.Join(root,"cli"),root);e==nil{t.Errorf("accepted invalid %v",args)}
+ }
+}
+func TestRepositoryProfiles(t *testing.T){
+ t.Setenv("RUNNER_PROFILE","")
+ t.Setenv("RUNNER_IMAGE","")
+ a,e:=newDockerRunner("r14r/BookBuilder",t.TempDir());if e!=nil{t.Fatal(e)}
+ if a.Profile!="bookbuilder"||a.Image!="github-actions-runner-local:2.338.1-bookbuilder" {t.Fatalf("%+v",a)}
+ b,e:=newDockerRunner("r14r/github-runner-test",t.TempDir());if e!=nil{t.Fatal(e)}
+ if b.Profile!="runner-base"||b.Container!="github-runner-r14r-github-runner-test"{t.Fatalf("%+v",b)}
+ if a.Volume==b.Volume{t.Fatal("different repositories must not share registration volumes")}
+}
+func TestExplicitProfileAndImage(t *testing.T){
+ t.Setenv("RUNNER_PROFILE","bookbuilder")
+ t.Setenv("RUNNER_IMAGE","test:image")
+ r,e:=newDockerRunner("other/project",t.TempDir());if e!=nil{t.Fatal(e)}
+ if r.Profile!="bookbuilder"||r.Image!="test:image"{t.Fatal(r)}
+}
+func TestProfileValidation(t *testing.T){
+ t.Setenv("RUNNER_PROFILE","unknown")
+ if _,e:=newDockerRunner("r14r/BookBuilder",t.TempDir());e==nil{t.Fatal("invalid profile accepted")}
+}
+func TestRepoSlug(t *testing.T){
+ slug,e:=repoSlug("https://github.com/r14r/BookBuilder.git")
+ if e!=nil||slug!="r14r-bookbuilder"{t.Fatalf("%q %v",slug,e)}
+ for _,name:=range []string{"", "bad", "../../etc/passwd", "x/y/z"}{
+  if _,e:=repoSlug(name);e==nil{t.Errorf("accepted %q",name)}
+ }
+}
+func TestRegisterFlagParsing(t *testing.T){
+ allow,name,e:=parseRegisterFlags([]string{"--allow-public","--name","runner-1"})
+ if e!=nil||!allow||name!="runner-1"{t.Fatalf("%v %q %v",allow,name,e)}
+ for _,args:=range [][]string{{"--name"},{"--name","--allow-public"},{"--bogus"}}{
+  if _,_,e:=parseRegisterFlags(args);e==nil{t.Errorf("accepted %v",args)}
+ }
+}
+func TestSetupOptions(t *testing.T){
+ o,e:=parseSetup([]string{"r14r/BookBuilder","--workflow",".github/workflows/ci.yml","--job","python","--allow-public"})
+ if e!=nil||o.repo!="r14r/BookBuilder"||len(o.workflows)!=1||o.jobs[0]!="python"||!o.allowPublic{t.Fatalf("%+v: %v",o,e)}
+ for _,args:=range [][]string{nil,{"bad"},{"r14r/BookBuilder","--workflow"},{"r14r/BookBuilder","--unknown"}}{
+  if _,e:=parseSetup(args);e==nil{t.Errorf("accepted %v",args)}
+ }
+}
+func TestGoOnlyJustfile(t *testing.T){
+ raw,e:=os.ReadFile(filepath.Join("..","..","justfile"));if e!=nil{t.Fatal(e)}
+ just:=string(raw)
+ for _,recipe:=range []string{"\nbootstrap:","\nci:","\nbuild:","\ninstall:"}{
+  if !strings.Contains(just,recipe){t.Errorf("recipe %q missing",recipe)}
+ }
+ for _,forbidden:=range []string{"pytest","python3","patch_workflow.py"}{
+  if strings.Contains(just,forbidden){t.Errorf("Python dependency remains: %s",forbidden)}
  }
 }

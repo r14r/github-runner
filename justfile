@@ -1,53 +1,53 @@
-# Build and install github-runner-cli (Go). Root-relative recipes.
+# GitHub Runner CLI — Go application. Run all recipes from repository root.
 set shell := ["bash", "-euo", "pipefail", "-c"]
 set working-directory := "."
 
 default:
     @just --list
 
-# Check installed toolchain without provisioning a runner.
+# Prepare Go modules without registering a runner or touching host state.
 bootstrap:
-    @command -v go >/dev/null || { echo "Go >= 1.23 required" >&2; exit 1; }
-    @command -v bash >/dev/null || { echo "bash required" >&2; exit 1; }
+    @command -v go >/dev/null 2>&1 || { echo "Go toolchain required" >&2; exit 1; }
     @go version
     go mod download
 
-# Validate Go code and preserve existing Bash/Python regression tests.
-ci: bootstrap
-    gofmt -w ./cmd
-    go vet ./...
-    go test ./...
-    @for f in ./*.sh runner/*.sh runner/lib/*.sh runner/docker/*.sh; do bash -n "$f"; done
-    python3 -m unittest discover -s tests -p test_runner_extension.py
-    @if python3 -m pytest --version >/dev/null 2>&1; then python3 -m pytest -q tests; else echo "pytest required for full CI" >&2; exit 1; fi
+fmt:
+    gofmt -w ./cmd ./internal
 
-# Portable application binary; scripts are installed separately as runtime assets.
+fmt-check:
+    @files="$(gofmt -l ./cmd ./internal)"; test -z "$files" || { printf 'Unformatted Go files:\n%s\n' "$files" >&2; exit 1; }
+
+lint: fmt-check
+    go vet ./...
+
+test:
+    go test -count=1 ./...
+
+# Go-only unit and integration tests.
+ci: bootstrap fmt lint test
+    go test -race ./...
+
 build: ci
     mkdir -p dist
     go build -trimpath -ldflags "-X main.version=$(cat VERSION)" -o dist/github-runner-cli ./cmd/github-runner-cli
     ./dist/github-runner-cli version
 
-# Install binary and runtime scripts; INSTALL_DIR defaults to /usr/local/bin.
-# Example: INSTALL_DIR="$HOME/.local/bin" just install
+# Binary + only the remaining host/container compatibility assets.
+# INSTALL_DIR defaults to /usr/local/bin. Never touch runner registrations.
 install: build
     @destination="${INSTALL_DIR:-/usr/local/bin}"; \
-      mkdir -p "$destination/env/github-runner-cli"; \
+      mkdir -p "$destination/env/github-runner-cli/runner/lib" "$destination/env/github-runner-cli/runner/docker"; \
       install -m 0755 dist/github-runner-cli "$destination/github-runner-cli"; \
       for f in ./*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/"; done; \
-      mkdir -p "$destination/env/github-runner-cli/runner/lib" "$destination/env/github-runner-cli/runner/docker"; \
       for f in runner/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/runner/"; done; \
-      for f in runner/lib/*.sh runner/lib/*.py; do install -m 0644 "$f" "$destination/env/github-runner-cli/runner/lib/"; done; \
+      for f in runner/lib/*.sh; do install -m 0644 "$f" "$destination/env/github-runner-cli/runner/lib/"; done; \
       for f in runner/docker/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/runner/docker/"; done; \
       install -m 0644 runner/docker/Dockerfile "$destination/env/github-runner-cli/runner/docker/Dockerfile"; \
-      "$destination/github-runner-cli" version
-
-clean:
-    rm -rf dist
+      test "$("$destination/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
 
 run *args:
     go run ./cmd/github-runner-cli {{args}}
 
-# Compatibility recipes forward to the Go CLI.
 runner-download repo:
     go run ./cmd/github-runner-cli runner download "{{repo}}"
 
@@ -58,16 +58,16 @@ runner-install-service repo:
     go run ./cmd/github-runner-cli runner install-service "{{repo}}"
 
 runner-start repo:
-    go run ./cmd/github-runner-cli runner start "{{repo}}"
+    go run ./cmd/github-runner-cli start "{{repo}}"
 
 runner-stop repo:
-    go run ./cmd/github-runner-cli runner stop "{{repo}}"
+    go run ./cmd/github-runner-cli stop "{{repo}}"
 
 runner-status repo:
-    go run ./cmd/github-runner-cli runner status "{{repo}}"
+    go run ./cmd/github-runner-cli status "{{repo}}"
 
 runner-monitor repo:
-    go run ./cmd/github-runner-cli runner monitor "{{repo}}"
+    go run ./cmd/github-runner-cli monitor "{{repo}}"
 
 runner-docker-doctor:
     go run ./cmd/github-runner-cli runner docker-doctor
@@ -75,42 +75,31 @@ runner-docker-doctor:
 runner-pr repo job workflow=".github/workflows/ci.yml":
     go run ./cmd/github-runner-cli runner setup "{{repo}}" --workflow "{{workflow}}" --job "{{job}}"
 
-# Legacy compatibility recipes retained during staged Go migration.
+# Legacy host scripts remain available only for existing registrations.
 doctor:
-    bash ./doctor.sh
+    go run ./cmd/github-runner-cli host doctor
 
 migrate:
-    bash ./migrate-macos.sh
+    go run ./cmd/github-runner-cli host migrate
 
 repair:
-    bash ./repair-macos.sh
+    go run ./cmd/github-runner-cli host repair
 
 start:
-    bash ./control.sh start
+    @echo 'Use: github-runner-cli start OWNER/REPO' >&2
+    @exit 2
 
 stop:
-    bash ./control.sh stop
+    @echo 'Use: github-runner-cli stop OWNER/REPO' >&2
+    @exit 2
 
 status:
-    bash ./control.sh status
+    @echo 'Use: github-runner-cli status OWNER/REPO' >&2
+    @exit 2
 
-monitor interval="10":
-    bash ./control.sh monitor "{{interval}}"
+monitor:
+    @echo 'Use: github-runner-cli monitor OWNER/REPO' >&2
+    @exit 2
 
-actions-cancel:
-    bash ./actions.sh cancel
-
-actions-delete:
-    bash ./actions.sh delete
-
-actions-clear:
-    bash ./actions.sh clear
-
-cleanup days="30":
-    bash ./cleanup.sh "{{days}}"
-
-cleanup-preview days="30":
-    RUNNER_CLEANUP_DRY_RUN=1 bash ./cleanup.sh "{{days}}"
-
-migrate-from-bookbuilder source:
-    LEGACY_RUNNER_DIR="{{source}}" bash ./migrate-macos.sh
+clean:
+    rm -rf dist

@@ -1,23 +1,27 @@
 schemaVersion: 2
 project:
-  name: GitHub Runner
-  slug: github-runner
+  name: GitHub Runner CLI
+  slug: github-runner-cli
   type: generic
+
 defaults:
   timeout: 15m
   failFast: true
+
 requirements:
-  commands: [go, bash, python3, tar]
-  optionalCommands: [just, gh]
+  commands: [go]
+  optionalCommands: [just, docker, gh]
+
 run:
-  description: Start previously registered runner
+  description: Display CLI help (runner operations require an explicit repository)
   cwd: .
-  command: just run
+  command: ./dist/github-runner-cli --help
+
 workflows:
   bootstrap:
     tasks: [bootstrap]
   setup:
-    tasks: [setup]
+    tasks: [bootstrap]
   precommit:
     tasks: [test]
   test:
@@ -30,64 +34,45 @@ workflows:
     tasks: [install]
   run:
     tasks: [run]
-  healthcheck:
-    tasks: [healthcheck]
-  doctor:
-    tasks: [doctor]
   clean:
     tasks: [clean]
+
 tasks:
   bootstrap:
     steps:
-      - id: bootstrap-dev
-        name: Prepare isolated test environment
-        shell: just bootstrap
-  setup:
-    steps:
-      - id: setup-check
-        name: Validate project metadata
+      - id: prepare-go-modules
+        name: Prepare Go dependencies
         shell: just bootstrap
   test:
     requires: [bootstrap]
     steps:
-      - id: syntax-check
-        name: Check Bash syntax
-        shell: just ci
-      - id: python-tests
-        name: Execute regression tests
+      - id: go-ci
+        name: Run Go format, vet and tests
         shell: just ci
   build:
     requires: [test]
     steps:
-      - id: package
-        name: Package runner management files
+      - id: compile
+        name: Compile Go CLI
         shell: just build
-      - id: verify-archive
-        name: Verify packaged artifact
-        shell: test -x dist/github-runner-cli
+      - id: verify-binary
+        name: Verify built binary exists
+        assert:
+          executable: dist/github-runner-cli
   install:
     requires: [build]
     steps:
-      - id: host-install
-        name: Explicit runner provisioning and registration
+      - id: install-cli
+        name: Install binary and runtime assets
         shell: just install
   run:
+    requires: [build]
     steps:
-      - id: start-service
-        name: Start registered runner service
-        shell: just run
-  healthcheck:
-    steps:
-      - id: check-service
-        name: Check registered runner service
-        shell: just status
-  doctor:
-    steps:
-      - id: host-check
-        name: Read-only host prerequisite verification
-        shell: just doctor
+      - id: help
+        name: CLI usage information
+        shell: ./dist/github-runner-cli --help
   clean:
     steps:
-      - id: remove-dist
-        name: Remove generated archives only
+      - id: generated-build-output
+        name: Remove dist folder only
         shell: just clean
