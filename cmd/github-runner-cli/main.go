@@ -46,6 +46,11 @@ func usage() {
  fmt.Print(`github-runner-cli — GitHub Actions runner manager
 
 Usage:
+  github-runner-cli install OWNER/REPO [--allow-public] [--name NAME]
+  github-runner-cli start OWNER/REPO
+  github-runner-cli stop OWNER/REPO
+  github-runner-cli status OWNER/REPO
+  github-runner-cli monitor OWNER/REPO
   github-runner-cli version
   github-runner-cli runner <download|register|setup|install-service|start|stop|status|monitor|foreground|uninstall-service> OWNER/REPO [options]
   github-runner-cli runner docker-doctor
@@ -66,7 +71,27 @@ func run(args []string, executable string, cwd string) error {
  }
  if args[0]=="help" || args[0]=="--help" || args[0]=="-h" {usage();return nil}
  env,err:=assetsDir(executable,cwd);if err!=nil{return err}
- switch args[0] {
+ switch strings.ToLower(args[0]) {
+ case "install":
+  if len(args)<2 || strings.HasPrefix(args[1],"-") {return errors.New("usage: github-runner-cli install OWNER/REPO [--allow-public] [--name NAME]")}
+  repo:=args[1]
+  // Validate option syntax before any downloads or modifications.
+  for i:=2;i<len(args);i++ {
+   switch args[i] {
+   case "--allow-public":
+   case "--name":
+    i++
+    if i>=len(args) || strings.HasPrefix(args[i],"-"){return errors.New("--name requires a runner name")}
+   default: return fmt.Errorf("unknown install option: %s",args[i])
+   }
+  }
+  if err:=execute(filepath.Join(env,"runner","01-download.sh"),[]string{repo});err!=nil{return err}
+  registerArgs:=append([]string{repo,"--if-needed"},args[2:]...)
+  if err:=execute(filepath.Join(env,"runner","02-configure.sh"),registerArgs);err!=nil{return err}
+  return execute(filepath.Join(env,"runner","04-run.sh"),[]string{repo,"install"})
+ case "start","stop","status","monitor":
+  if len(args)!=2 || strings.HasPrefix(args[1],"-"){return fmt.Errorf("usage: github-runner-cli %s OWNER/REPO",strings.ToLower(args[0]))}
+  return execute(filepath.Join(env,"runner","04-run.sh"),[]string{args[1],strings.ToLower(args[0])})
  case "runner":
   if len(args)<2{return errors.New("runner action required")}
   if args[1]=="docker-doctor" {
