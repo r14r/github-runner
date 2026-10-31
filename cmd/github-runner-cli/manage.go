@@ -182,6 +182,7 @@ func githubRunners(repo string)([]runnerRecord,error){
 }
 func matchedRegistration(id runnerIdentity, remote []runnerRecord)(*runnerRecord,error){
     if id.AgentName==""{return nil,nil}
+    if id.AgentID==0{return nil,errors.New("runner identity has no agentId; refusing to deregister by name alone")}
     for i:=range remote {
         if remote[i].Name==id.AgentName{
             if id.AgentID!=0&&remote[i].ID!=id.AgentID {
