@@ -15,6 +15,7 @@ github-runner-cli start --repo r14r/BookBuilder
 github-runner-cli status --repository r14r/BookBuilder
 github-runner-cli list-installed
 github-runner-cli list-installed --repo r14r/BookBuilder
+github-runner-cli uninstall --repo r14r/BookBuilder --dry-run
 github-runner-cli uninstall --repo r14r/BookBuilder
 github-runner-cli uninstall --all --yes --delete-data
 github-runner-cli self-uninstall --yes
