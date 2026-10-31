@@ -74,43 +74,31 @@ type setupOptions struct {
 }
 
 func parseSetup(args []string) (setupOptions, error) {
-	var o setupOptions
-	if len(args) < 1 {
-		return o, errors.New("usage: github-runner-cli runner setup OWNER/REPO [--workflow PATH] [--job ID] [--allow-public] [--allow-cross-os] [--merge]")
-	}
-	o.repo = gitHubRepository(args[0])
-	if _, err := repoSlug(o.repo); err != nil {
-		return o, err
-	}
-	for i := 1; i < len(args); i++ {
-		switch args[i] {
-		case "--allow-public":
-			o.allowPublic = true
-		case "--allow-cross-os":
-			o.allowCrossOS = true
-		case "--merge":
-			o.merge = true
-		case "--no-merge":
-			o.merge = false
-		case "--workflow", "--job", "--base":
-			if i+1 >= len(args) {
-				return o, fmt.Errorf("%s requires a value", args[i])
-			}
-			key := args[i]
-			i++
-			switch key {
-			case "--workflow":
-				o.workflows = append(o.workflows, args[i])
-			case "--job":
-				o.jobs = append(o.jobs, args[i])
-			case "--base":
-				o.base = args[i]
-			}
-		default:
-			return o, fmt.Errorf("unknown setup option %q", args[i])
-		}
-	}
-	return o, nil
+    var o setupOptions
+    repo, rest, err := requireRepo(args)
+    if err != nil { return o, err }
+    o.repo = repo
+    for i := 0; i < len(rest); i++ {
+        switch rest[i] {
+        case "--allow-public": o.allowPublic = true
+        case "--allow-cross-os": o.allowCrossOS = true
+        case "--merge": o.merge = true
+        case "--no-merge": o.merge = false
+        case "--workflow", "--job", "--base":
+            if i+1 >= len(rest) || strings.HasPrefix(rest[i+1], "--") {
+                return o, fmt.Errorf("%s requires a value", rest[i])
+            }
+            key := rest[i]
+            i++
+            switch key {
+            case "--workflow": o.workflows = append(o.workflows, rest[i])
+            case "--job": o.jobs = append(o.jobs, rest[i])
+            case "--base": o.base = rest[i]
+            }
+        default: return o, fmt.Errorf("unknown setup option %q", rest[i])
+        }
+    }
+    return o, nil
 }
 func setupWorkflow(args []string) error {
 	o, e := parseSetup(args)
