@@ -74,3 +74,43 @@ runner-docker-doctor:
 
 runner-pr repo job workflow=".github/workflows/ci.yml":
     go run ./cmd/github-runner-cli runner setup "{{repo}}" --workflow "{{workflow}}" --job "{{job}}"
+
+# Legacy compatibility recipes retained during staged Go migration.
+doctor:
+    bash ./doctor.sh
+
+migrate:
+    bash ./migrate-macos.sh
+
+repair:
+    bash ./repair-macos.sh
+
+start:
+    bash ./control.sh start
+
+stop:
+    bash ./control.sh stop
+
+status:
+    bash ./control.sh status
+
+monitor interval="10":
+    bash ./control.sh monitor "{{interval}}"
+
+actions-cancel:
+    bash ./actions.sh cancel
+
+actions-delete:
+    bash ./actions.sh delete
+
+actions-clear:
+    bash ./actions.sh clear
+
+cleanup days="30":
+    bash ./cleanup.sh "{{days}}"
+
+cleanup-preview days="30":
+    RUNNER_CLEANUP_DRY_RUN=1 bash ./cleanup.sh "{{days}}"
+
+migrate-from-bookbuilder source:
+    LEGACY_RUNNER_DIR="{{source}}" bash ./migrate-macos.sh
