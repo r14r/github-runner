@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — Native Go Docker lifecycle and workflow migration (2026-10-31)
+
+- Remove all Python project files and pytest dependency from CI and install.
+- Port conservative workflow patching, validation and PR creation to Go.
+- Move repository-scoped Docker/Colima download, registration, status, monitoring,
+  image selection and container refresh to Go.
+- Retain safely isolated macOS/Ubuntu host service scripts as runtime
+  compatibility assets; no runner registrations or Docker volumes are migrated.
+- Replace Python regression tests with Go unit and race tests.
+- Simplify `just bootstrap`, `just ci`, `just build`, and `just install`.
+- Verify these recipes on GitHub Actions using a pinned just binary and continue
+  building and verifying the BookBuilder Docker image in CI.
+
 ## 0.1.2 — Multi-repository Docker/Colima runner extension (2026-10-31)
 
 - Add repository-scoped Linux x64 runners for older Intel macOS via Colima/Docker.
