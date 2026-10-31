@@ -7,7 +7,7 @@ defaults:
   timeout: 15m
   failFast: true
 requirements:
-  commands: [bash, python3, tar]
+  commands: [go, bash, python3, tar]
   optionalCommands: [just, gh]
 run:
   description: Start previously registered runner
@@ -46,16 +46,16 @@ tasks:
     steps:
       - id: setup-check
         name: Validate project metadata
-        shell: just setup
+        shell: just bootstrap
   test:
     requires: [bootstrap]
     steps:
       - id: syntax-check
         name: Check Bash syntax
-        shell: just fmt-check
+        shell: just ci
       - id: python-tests
         name: Execute regression tests
-        shell: just test
+        shell: just ci
   build:
     requires: [test]
     steps:
@@ -64,7 +64,7 @@ tasks:
         shell: just build
       - id: verify-archive
         name: Verify packaged artifact
-        shell: just verify-build
+        shell: test -x dist/github-runner-cli
   install:
     requires: [build]
     steps:
