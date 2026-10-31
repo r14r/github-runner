@@ -5,6 +5,13 @@ set working-directory := "."
 default:
     @just --list
 
+# Fast-forward repository updates, run required checks, and rebuild the CLI.
+update:
+    git pull --ff-only
+    just bootstrap
+    just ci
+    just build
+
 # Prepare Go modules without registering a runner or touching host state.
 bootstrap:
     @command -v go >/dev/null 2>&1 || { echo "Go toolchain required" >&2; exit 1; }
