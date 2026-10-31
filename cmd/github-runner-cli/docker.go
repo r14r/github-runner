@@ -254,6 +254,4 @@ func (r dockerRunner) install(allowPublic bool,name string)error{
  if err:=r.register(allowPublic,name,true);err!=nil{return err}
  return r.installContainer()
 }
-// The shell entrypoint provided by the official GitHub runner is retained
-// inside the Docker image; all host-side Docker orchestration is native Go.
-var _ io.Reader = (*bytes.Reader)(nil)
+// The official runner container entrypoint remains inside the Docker image.
