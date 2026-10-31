@@ -23,11 +23,23 @@ jobs:
         run: go vet ./...
       - name: Go tests
         run: go test -race -count=1 ./...
-      - name: Go CLI build and smoke test
+      - name: Install pinned just
         run: |
-          go build -trimpath -ldflags "-X main.version=$(cat VERSION)" -o ./github-runner-cli ./cmd/github-runner-cli
-          test "$(./github-runner-cli version)" = "github-runner-cli $(cat VERSION)"
-          ./github-runner-cli --help
+          curl -fsSL --retry 3 -o /tmp/just.tar.gz \
+            https://github.com/casey/just/releases/download/1.58.0/just-1.58.0-x86_64-unknown-linux-musl.tar.gz
+          printf '%s  %s\\n' '4a5cc2f53e6f0f8c59092a6cc38291eb729d46a7dd95d3ae582008881b84931d' /tmp/just.tar.gz | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/just"
+          tar -xzf /tmp/just.tar.gz -C "$RUNNER_TEMP/just"
+          echo "$RUNNER_TEMP/just" >> "$GITHUB_PATH"
+      - name: Run full just lifecycle (no Python)
+        run: |
+          just bootstrap
+          just ci
+          just build
+          INSTALL_DIR="$RUNNER_TEMP/bin" just install
+          test "$("$RUNNER_TEMP/bin/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
+          "$RUNNER_TEMP/bin/github-runner-cli" --help
+          test -f "$RUNNER_TEMP/bin/env/github-runner-cli/runner/docker/Dockerfile"
 
   bookbuilder-image:
     runs-on: ubuntu-24.04
