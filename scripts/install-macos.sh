@@ -7,7 +7,7 @@ REPO="${RUNNER_REPO:-r14r/BookBuilder-with-typst}"
 RUNNER_VERSION="2.338.1"
 TYPST_VERSION="0.15.1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-RUNNER_DIR="${RUNNER_DIR:-$SCRIPT_DIR/.local/bookbuilder-actions-runner}"
+RUNNER_DIR="${RUNNER_DIR:-$(dirname "$SCRIPT_DIR")/.local/bookbuilder-actions-runner}"
 RUNNER_NAME="${RUNNER_NAME:-$(hostname -s)-bookbuilder-macos}"
 LOCAL_BIN="$HOME/.local/bin"
 
