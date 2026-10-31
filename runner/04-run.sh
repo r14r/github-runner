@@ -3,7 +3,7 @@
 set -euo pipefail
 source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
 
-[[ $# -ge 1 && $# -le 2 ]] || fail "Usage: $0 OWNER/REPO [foreground|install|start|stop|status|monitor|uninstall]"
+[[ $# -ge 1 && $# -le 2 ]] || fail "Usage: $0 OWNER/REPO [foreground|install|start|stop|status|monitor|uninstall|replace-container]"
 set_repo "$1"
 action="${2:-foreground}"
 select_backend
@@ -31,12 +31,24 @@ github_status() {
   [[ "$found" == true ]] || info "GitHub status: runner '$name' not found. Check registration."
 }
 
+# Never replace a running runner silently. Docker image changes require
+# explicit container replacement; the named registration volume is preserved.
+docker_image_matches_container() {
+  local desired actual
+  desired="$(docker image inspect --format '{{.Id}}' "$RUNNER_IMAGE")" || return 1
+  actual="$(docker container inspect --format '{{.Image}}' "$RUNNER_CONTAINER")" || return 1
+  [[ "$desired" == "$actual" ]]
+}
+
 if [[ "$RUNNER_SELECTED_BACKEND" == docker ]]; then
   docker_state_exists || fail "Runner not registered in $RUNNER_VOLUME. Run 02-configure.sh first."
   case "$action" in
     install)
       if docker_container_exists; then
         info "Runner container $RUNNER_CONTAINER already exists."
+        if ! docker_image_matches_container; then
+          info "Image changed: stop the runner after its active job finishes, then run 'github-runner-cli runner replace-container $REPOSITORY'."
+        fi
       else
         docker_create_runner
         info "Installed container $RUNNER_CONTAINER (Docker socket access is opt-in)."
@@ -44,6 +56,7 @@ if [[ "$RUNNER_SELECTED_BACKEND" == docker ]]; then
       ;;
     start)
       if ! docker_container_exists; then docker_create_runner; fi
+      docker_image_matches_container || fail "Container uses an outdated image. Stop and run 'github-runner-cli runner replace-container $REPOSITORY' first (registration volume is retained)."
       docker start "$RUNNER_CONTAINER"
       ;;
     stop)
@@ -52,6 +65,9 @@ if [[ "$RUNNER_SELECTED_BACKEND" == docker ]]; then
     status)
       if docker_container_exists; then
         docker container inspect --format '{{.Name}}: {{.State.Status}} (restart: {{.HostConfig.RestartPolicy.Name}})' "$RUNNER_CONTAINER"
+        if ! docker_image_matches_container; then
+          info "WARNING: Container image is outdated; stop it after its job finishes and replace the container to use $RUNNER_IMAGE."
+        fi
       else
         info "Docker container not installed: $RUNNER_CONTAINER"
       fi
@@ -67,6 +83,21 @@ if [[ "$RUNNER_SELECTED_BACKEND" == docker ]]; then
         docker logs --tail 8 "$RUNNER_CONTAINER" 2>/dev/null || true
         sleep "${RUNNER_MONITOR_SECONDS:-10}"
       done
+      ;;
+    replace-container)
+      docker image inspect "$RUNNER_IMAGE" >/dev/null || fail "Desired image missing: $RUNNER_IMAGE"
+      if docker_container_exists; then
+        [[ "$(docker container inspect --format '{{.State.Running}}' "$RUNNER_CONTAINER")" == false ]] ||
+          fail "Runner is running. Check GitHub busy status and stop it before replacing the container."
+        # Preserve explicit socket opt-in rather than silently changing mount privileges.
+        socket_mount="$(docker container inspect --format '{{range .Mounts}}{{if eq .Destination "/var/run/docker.sock"}}yes{{end}}{{end}}' "$RUNNER_CONTAINER")"
+        if [[ "$socket_mount" == yes && "${RUNNER_DOCKER_SOCKET:-0}" != 1 ]]; then
+          fail "Existing runner has Docker socket access. Set RUNNER_DOCKER_SOCKET=1 explicitly to preserve it when replacing."
+        fi
+        docker rm "$RUNNER_CONTAINER" >/dev/null
+      fi
+      docker_create_runner
+      info "Created $RUNNER_CONTAINER from $RUNNER_IMAGE. Registration and workspace volume $RUNNER_VOLUME preserved. Start it explicitly."
       ;;
     uninstall)
       if docker_container_exists; then docker rm -f "$RUNNER_CONTAINER"; fi
