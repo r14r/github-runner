@@ -241,6 +241,8 @@ func (r dockerRunner) createContainer() error {
 		return errors.New("RUNNER_DOCKER_SOCKET must be 0 or 1")
 	}
 	args := []string{"create", "--platform", dockerPlatform, "--name", r.Container,
+        "--label", "com.github-runner-cli.repository="+r.Repo,
+        "--label", "com.github-runner-cli.managed=true",
 		"--restart", "unless-stopped", "--mount", "type=volume,source=" + r.Volume + ",target=/runner"}
 	if socket == "1" {
 		fmt.Fprintln(os.Stderr, "WARNING: runner will have full Docker daemon access")
