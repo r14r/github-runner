@@ -162,7 +162,8 @@ func (r dockerRunner) download() error {
 			return fmt.Errorf("BookBuilder doctor failed: %w", err)
 		}
 	}
-	if err := commandRun("", "docker", "volume", "create", r.Volume); err != nil {
+	if err := commandRun("", "docker", "volume", "create",
+        "--label", "com.github-runner-cli.repository="+r.Repo, r.Volume); err != nil {
 		return err
 	}
 	fmt.Printf("Image ready: %s (registration volume %s)\n", r.Image, r.Volume)
