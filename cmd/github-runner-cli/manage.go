@@ -307,7 +307,7 @@ func uninstallCommand(repo string,args []string)error{
         slugs=[]string{slug}
     }
     if len(slugs)==0{fmt.Println("No locally installed runners found.");return nil}
-    plans,err:=planRemoval(slugs)
+    plans,err:=planRemoval(slugs,o.Repo)
     if err!=nil{
         // With --repo, a legacy registration lacking gitHubUrl can still be
         // selected explicitly, but never override a conflicting identity.
