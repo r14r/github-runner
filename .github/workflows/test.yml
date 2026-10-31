@@ -12,14 +12,27 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install regression test dependency
+      - name: Install test dependencies
         run: python -m pip install pytest
+      - name: Go formatting, vet and tests
+        run: |
+          test -z "$(gofmt -l ./cmd)"
+          go vet ./...
+          go test ./...
       - name: Verify shell syntax
         run: |
-          for script in ./*.sh; do bash -n "$script"; done
-      - name: Run mocked runner tests
+          for script in ./*.sh runner/*.sh runner/lib/*.sh runner/docker/*.sh; do bash -n "$script"; done
+      - name: Python regression tests
         run: python -m pytest -q tests
+      - name: Build CLI and smoke test
+        run: |
+          go build -trimpath -o ./github-runner-cli ./cmd/github-runner-cli
+          ./github-runner-cli version
+          ./github-runner-cli --help
