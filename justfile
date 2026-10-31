@@ -23,7 +23,7 @@ lint: fmt-check
 test:
     go test -count=1 ./...
 
-# Fully Go-based unit and integration tests. No Python or pytest needed.
+# Go-only unit and integration tests.
 ci: bootstrap fmt lint test
     go test -race ./...
 
