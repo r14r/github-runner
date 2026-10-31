@@ -90,6 +90,9 @@ func run(args []string, executable string, cwd string) error {
   registerArgs:=append([]string{repo,"--if-needed"},args[2:]...)
   if err:=execute(filepath.Join(env,"runner","02-configure.sh"),registerArgs);err!=nil{return err}
   return execute(filepath.Join(env,"runner","04-run.sh"),[]string{repo,"install"})
+ case "refresh":
+  if len(args)!=2 || strings.HasPrefix(args[1],"-") {return errors.New("usage: github-runner-cli refresh OWNER/REPO")}
+  return execute(filepath.Join(env,"runner","04-run.sh"),[]string{args[1],"replace-container"})
  case "start","stop","status","monitor":
   if len(args)!=2 || strings.HasPrefix(args[1],"-"){return fmt.Errorf("usage: github-runner-cli %s OWNER/REPO",strings.ToLower(args[0]))}
   return execute(filepath.Join(env,"runner","04-run.sh"),[]string{args[1],strings.ToLower(args[0])})
