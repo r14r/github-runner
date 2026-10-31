@@ -62,7 +62,7 @@ RUN apt-get update \
 RUN curl -fsSL --retry 3 \
        "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
        -o /tmp/just.tar.gz \
-    && printf '%s  %s\\n' "$JUST_SHA256" /tmp/just.tar.gz | sha256sum -c - \
+    && printf '%s  %s\n' "$JUST_SHA256" /tmp/just.tar.gz | sha256sum -c - \
     && mkdir -p /tmp/just-unpack \
     && tar -xzf /tmp/just.tar.gz -C /tmp/just-unpack \
     && install -m 0755 "$(find /tmp/just-unpack -type f -name just -print -quit)" /usr/local/bin/just \
@@ -71,7 +71,7 @@ RUN curl -fsSL --retry 3 \
 RUN curl -fsSL --retry 3 \
        "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" \
        -o /tmp/typst.tar.xz \
-    && printf '%s  %s\\n' "$TYPST_SHA256" /tmp/typst.tar.xz | sha256sum -c - \
+    && printf '%s  %s\n' "$TYPST_SHA256" /tmp/typst.tar.xz | sha256sum -c - \
     && mkdir -p /tmp/typst-unpack \
     && tar -xJf /tmp/typst.tar.xz -C /tmp/typst-unpack \
     && install -m 0755 "$(find /tmp/typst-unpack -type f -name typst -print -quit)" /usr/local/bin/typst \
@@ -81,6 +81,6 @@ RUN curl -fsSL --retry 3 \
 RUN command -v just && command -v ffmpeg && command -v fc-list \
     && test "$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')" = "8.2" \
     && php -r 'foreach (["curl","zip","mbstring"] as $extension) { if (!extension_loaded($extension)) exit(1); }' \
-    && java -version 2>&1 | grep -Eq 'version "21\\.|openjdk 21\\.' \
+    && java -version 2>&1 | grep -Eq 'version "21[.]|openjdk 21[.]' \
     && typst --version | grep -Eq '^typst 0[.]15[.]1([[:space:]]|$)' \
     && just --version
