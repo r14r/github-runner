@@ -190,7 +190,7 @@ func run(args []string, executable, cwd string) error {
         if strings.HasPrefix(sub, "actions-") { rest = append([]string{strings.TrimPrefix(sub,"actions-")},rest...) }
         if script == "control.sh" { rest = append([]string{sub},rest...) }
         if sub == "cleanup" && len(rest) == 0 { rest = []string{"30"} }
-        return execute(filepath.Join(env, script), rest, repo)
+        return execute(filepath.Join(env, "scripts", script), rest, repo)
     default:
         return fmt.Errorf("unknown command %q (try --help)", action)
     }
