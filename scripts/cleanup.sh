@@ -15,7 +15,7 @@ fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 case "$(uname -s)" in
-  Darwin) RUNNER_DIR="${RUNNER_DIR:-$here/.local/bookbuilder-actions-runner}" ;;
+  Darwin) RUNNER_DIR="${RUNNER_DIR:-$(dirname "$here")/.local/bookbuilder-actions-runner}" ;;
   Linux) RUNNER_DIR="${RUNNER_DIR:-/opt/bookbuilder-actions-runner}" ;;
   *) fail "Unsupported platform; macOS and Linux only." ;;
 esac

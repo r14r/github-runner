@@ -10,7 +10,7 @@ import (
 func testAssets(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	for _, path := range []string{"runner/docker/Dockerfile", "runner/04-run.sh", "doctor-linux.sh"} {
+	for _, path := range []string{"runner/docker/Dockerfile", "runner/04-run.sh", "scripts/doctor-linux.sh"} {
 		full := filepath.Join(root, filepath.FromSlash(path))
 		if e := os.MkdirAll(filepath.Dir(full), 0755); e != nil {
 			t.Fatal(e)
@@ -111,11 +111,11 @@ func TestRegisterFlagParsing(t *testing.T) {
 	}
 }
 func TestSetupOptions(t *testing.T) {
-	o, e := parseSetup([]string{"r14r/BookBuilder", "--workflow", ".github/workflows/ci.yml", "--job", "python", "--allow-public"})
+	o, e := parseSetup([]string{"--repo", "r14r/BookBuilder", "--workflow", ".github/workflows/ci.yml", "--job", "python", "--allow-public"})
 	if e != nil || o.repo != "r14r/BookBuilder" || len(o.workflows) != 1 || o.jobs[0] != "python" || !o.allowPublic {
 		t.Fatalf("%+v: %v", o, e)
 	}
-	for _, args := range [][]string{nil, {"bad"}, {"r14r/BookBuilder", "--workflow"}, {"r14r/BookBuilder", "--unknown"}} {
+	for _, args := range [][]string{nil, {"bad"}, {"--repo", "r14r/BookBuilder", "--workflow"}, {"--repo", "r14r/BookBuilder", "--unknown"}} {
 		if _, e := parseSetup(args); e == nil {
 			t.Errorf("accepted %v", args)
 		}

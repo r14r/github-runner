@@ -36,9 +36,9 @@ build: ci
 # INSTALL_DIR defaults to /usr/local/bin. Never touch runner registrations.
 install: build
     @destination="${INSTALL_DIR:-/usr/local/bin}"; \
-      mkdir -p "$destination/env/github-runner-cli/runner/lib" "$destination/env/github-runner-cli/runner/docker"; \
+      mkdir -p "$destination/env/github-runner-cli/scripts" "$destination/env/github-runner-cli/runner/lib" "$destination/env/github-runner-cli/runner/docker"; \
       install -m 0755 dist/github-runner-cli "$destination/github-runner-cli"; \
-      for f in ./*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/"; done; \
+      for f in scripts/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/scripts/"; done; \
       for f in runner/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/runner/"; done; \
       for f in runner/lib/*.sh; do install -m 0644 "$f" "$destination/env/github-runner-cli/runner/lib/"; done; \
       for f in runner/docker/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/runner/docker/"; done; \
@@ -48,33 +48,37 @@ install: build
 run *args:
     go run ./cmd/github-runner-cli {{args}}
 
-runner-download repo:
-    go run ./cmd/github-runner-cli runner download "{{repo}}"
+runner-download repository:
+    go run ./cmd/github-runner-cli runner download --repo "{{repository}}"
 
-runner-register repo:
-    go run ./cmd/github-runner-cli runner register "{{repo}}"
+runner-register repository:
+    go run ./cmd/github-runner-cli runner register --repo "{{repository}}"
 
-runner-install-service repo:
-    go run ./cmd/github-runner-cli runner install-service "{{repo}}"
+runner-install-service repository:
+    go run ./cmd/github-runner-cli runner install-service --repo "{{repository}}"
 
-runner-start repo:
-    go run ./cmd/github-runner-cli start "{{repo}}"
+runner-start repository:
+    go run ./cmd/github-runner-cli start --repo "{{repository}}"
 
-runner-stop repo:
-    go run ./cmd/github-runner-cli stop "{{repo}}"
+runner-stop repository:
+    go run ./cmd/github-runner-cli stop --repo "{{repository}}"
 
-runner-status repo:
-    go run ./cmd/github-runner-cli status "{{repo}}"
+runner-status repository:
+    go run ./cmd/github-runner-cli status --repo "{{repository}}"
 
-runner-monitor repo:
-    go run ./cmd/github-runner-cli monitor "{{repo}}"
+runner-monitor repository:
+    go run ./cmd/github-runner-cli monitor --repo "{{repository}}"
 
 runner-docker-doctor:
     go run ./cmd/github-runner-cli runner docker-doctor
 
-runner-pr repo job workflow=".github/workflows/ci.yml":
-    go run ./cmd/github-runner-cli runner setup "{{repo}}" --workflow "{{workflow}}" --job "{{job}}"
+runner-pr repository job workflow=".github/workflows/ci.yml":
+    go run ./cmd/github-runner-cli runner setup --repo "{{repository}}" --workflow "{{workflow}}" --job "{{job}}"
 
+list-installed *args:
+    go run ./cmd/github-runner-cli list-installed {{args}}
+
+# Uninstall is intentionally not a just recipe: use installed binary with flags.
 # Legacy host scripts remain available only for existing registrations.
 doctor:
     go run ./cmd/github-runner-cli host doctor

@@ -149,7 +149,7 @@ func (r dockerRunner) download() error {
 		return err
 	}
 	if r.Profile == "bookbuilder" {
-		doctorPath := filepath.Join(r.Assets, "doctor-linux.sh")
+		doctorPath := filepath.Join(r.Assets, "scripts", "doctor-linux.sh")
 		body, err := os.ReadFile(doctorPath)
 		if err != nil {
 			return err
@@ -162,7 +162,8 @@ func (r dockerRunner) download() error {
 			return fmt.Errorf("BookBuilder doctor failed: %w", err)
 		}
 	}
-	if err := commandRun("", "docker", "volume", "create", r.Volume); err != nil {
+	if err := commandRun("", "docker", "volume", "create",
+        "--label", "com.github-runner-cli.repository="+r.Repo, r.Volume); err != nil {
 		return err
 	}
 	fmt.Printf("Image ready: %s (registration volume %s)\n", r.Image, r.Volume)
@@ -241,6 +242,8 @@ func (r dockerRunner) createContainer() error {
 		return errors.New("RUNNER_DOCKER_SOCKET must be 0 or 1")
 	}
 	args := []string{"create", "--platform", dockerPlatform, "--name", r.Container,
+        "--label", "com.github-runner-cli.repository="+r.Repo,
+        "--label", "com.github-runner-cli.managed=true",
 		"--restart", "unless-stopped", "--mount", "type=volume,source=" + r.Volume + ",target=/runner"}
 	if socket == "1" {
 		fmt.Fprintln(os.Stderr, "WARNING: runner will have full Docker daemon access")

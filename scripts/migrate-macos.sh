@@ -9,7 +9,7 @@ umask 077
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source_dir="${LEGACY_RUNNER_DIR:-$HOME/.local/share/bookbuilder-actions-runner}"
-target_dir="${RUNNER_DIR:-$here/.local/bookbuilder-actions-runner}"
+target_dir="${RUNNER_DIR:-$(dirname "$here")/.local/bookbuilder-actions-runner}"
 
 fail() { printf 'Migration error: %s\n' "$*" >&2; exit 1; }
 log() { printf '[BookBuilder runner migration] %s\n' "$*"; }

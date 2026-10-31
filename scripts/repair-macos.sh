@@ -8,7 +8,7 @@ umask 077
 [[ "$(id -u)" -ne 0 ]] || { echo "Run as the runner account, not root." >&2; exit 1; }
 REPO="${RUNNER_REPO:-r14r/BookBuilder-with-typst}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-RUNNER_DIR="${RUNNER_DIR:-$here/.local/bookbuilder-actions-runner}"
+RUNNER_DIR="${RUNNER_DIR:-$(dirname "$here")/.local/bookbuilder-actions-runner}"
 fail() { printf 'Repair refused: %s\n' "$*" >&2; exit 1; }
 log() { printf '[BookBuilder runner repair] %s\n' "$*"; }
 

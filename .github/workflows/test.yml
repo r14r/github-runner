@@ -39,7 +39,11 @@ jobs:
           INSTALL_DIR="$RUNNER_TEMP/bin" just install
           test "$("$RUNNER_TEMP/bin/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
           "$RUNNER_TEMP/bin/github-runner-cli" --help
+          "$RUNNER_TEMP/bin/github-runner-cli" list-installed --help 2>/dev/null || true
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/runner/docker/Dockerfile"
+          test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/doctor-linux.sh"
+          test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/control.sh"
+          test ! -e "$RUNNER_TEMP/bin/env/github-runner-cli/doctor-linux.sh"
 
   bookbuilder-image:
     runs-on: ubuntu-24.04
@@ -54,4 +58,4 @@ jobs:
       - name: Validate requirements in actual image
         run: |
           docker run --rm -i --platform linux/amd64 \
-            --entrypoint bash github-actions-runner-ci:bookbuilder -s < doctor-linux.sh
+            --entrypoint bash github-actions-runner-ci:bookbuilder -s < scripts/doctor-linux.sh

@@ -6,7 +6,7 @@ OS="$(uname -s)"
 case "$OS" in
   Darwin)
     here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-    RUNNER_DIR="${RUNNER_DIR:-$here/.local/bookbuilder-actions-runner}"
+    RUNNER_DIR="${RUNNER_DIR:-$(dirname "$here")/.local/bookbuilder-actions-runner}"
     ;;
   Linux) RUNNER_DIR="${RUNNER_DIR:-/opt/bookbuilder-actions-runner}" ;;
   *) echo "Unsupported runner OS: $OS" >&2; exit 1 ;;
