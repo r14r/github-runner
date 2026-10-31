@@ -46,6 +46,7 @@ func TestUninstallSafeguards(t *testing.T){
         {"r14r/BookBuilder",[]string{"--delete-data"},false,true},
         {"",[]string{"--all","--yes"},true,false},
         {"",[]string{"--all","--yes","--delete-data"},true,true},
+        {"",[]string{"--all","--dry-run"},true,false},
     }
     for _,tt:=range valid{
         o,err:=parseUninstall(tt.repo,tt.args)
