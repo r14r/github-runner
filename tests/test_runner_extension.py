@@ -83,5 +83,23 @@ class WorkflowPatchTests(unittest.TestCase):
             patch_file(link, 'ci', False, os_name='Linux')
 
 
+    def test_docker_preflight_is_safe_and_keeps_apt_signature_checks(self):
+        root = Path(__file__).resolve().parents[1]
+        doctor = (root / 'runner/docker/doctor.sh').read_text()
+        download = (root / 'runner/01-download.sh').read_text()
+        recipe = (root / 'justfile').read_text()
+        dockerfile = (root / 'runner/docker/Dockerfile').read_text()
+        self.assertIn('bash "$RUNNER_ROOT/docker/doctor.sh"', download)
+        self.assertIn('runner-docker-doctor:', recipe)
+        self.assertIn('apt-get update', doctor)
+        self.assertIn('df -Pk /', doctor)
+        self.assertIn('docker system df', doctor)
+        self.assertNotIn('docker system prune', doctor)
+        self.assertNotIn('docker volume rm', doctor)
+        self.assertNotIn('AllowInsecureRepositories', dockerfile)
+        self.assertIn('RUN apt-get update', dockerfile)
+        self.assertIn('RUN apt-get install', dockerfile)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -5,7 +5,8 @@ ARG RUNNER_SHA256_LINUX_X64=08e9ccb3604d2462c24b5e33604dc30810296ca15cc65f23cffd
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Docker CLI and Compose talk to the Colima daemon through its socket.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends \
     bash build-essential ca-certificates curl git gnupg jq gosu \
     libicu74 libssl3t64 libkrb5-3 liblttng-ust1t64 libnuma1 \
     openssh-client python3 python3-venv python3-pip tar unzip zip \
