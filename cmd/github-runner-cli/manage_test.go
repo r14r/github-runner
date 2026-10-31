@@ -59,6 +59,8 @@ func TestMatchingRunnerIdentityRequiresExactID(t *testing.T){
     if err!=nil||r==nil||r.ID!=42{t.Fatalf("match: %+v %v",r,err)}
     _,err=matchedRegistration(runnerIdentity{AgentID:43,AgentName:rec[0].Name},rec)
     if err==nil{t.Fatal("mismatched GitHub ID accepted")}
+    _,err=matchedRegistration(runnerIdentity{AgentName:rec[0].Name},rec)
+    if err==nil{t.Fatal("missing runner ID accepted")}
     r,err=matchedRegistration(runnerIdentity{AgentName:"different"},rec)
     if err!=nil||r!=nil{t.Fatalf("unexpected match: %+v %v",r,err)}
 }
