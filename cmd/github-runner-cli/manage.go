@@ -238,6 +238,12 @@ func planRemoval(repos []string, explicitRepo string)([]removePlan,error){
     remoteCache:=map[string][]runnerRecord{}
     for _,slug:=range repos{
         l,err:=inspectLocal(slug);if err!=nil{return nil,err}
+        if explicitRepo!="" {
+            if l.Repository!="" && !strings.EqualFold(l.Repository,explicitRepo){
+                return nil,fmt.Errorf("runner belongs to %s, not %s",l.Repository,explicitRepo)
+            }
+            l.Repository=explicitRepo
+        }
         if l.Repository=="" {
             return nil,fmt.Errorf("cannot determine repository for %s; remove it individually with --repo, not --all",slug)
         }
