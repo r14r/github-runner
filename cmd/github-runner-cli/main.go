@@ -48,7 +48,7 @@ Usage:
   github-runner-cli monitor --repo OWNER/REPO
   github-runner-cli refresh --repo OWNER/REPO
   github-runner-cli list-installed [--repo OWNER/REPO]
-  github-runner-cli uninstall --repo OWNER/REPO [--delete-data]
+  github-runner-cli uninstall --repo OWNER/REPO [--dry-run] [--delete-data]
   github-runner-cli uninstall --all --yes [--delete-data]
   github-runner-cli self-uninstall --yes
   github-runner-cli runner docker-doctor
