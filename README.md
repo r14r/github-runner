@@ -56,6 +56,8 @@ GitHub API, including runners hosted on other machines.
 ```sh
 # Unregister the matching GitHub runner and remove its Docker container.
 # Preserves local volume, registration/workspace files and other images.
+github-runner-cli uninstall --repo r14r/BookBuilder --dry-run
+# Once reviewed, perform the actual removal:
 github-runner-cli uninstall --repo r14r/BookBuilder
 
 # Permanently remove its registration/workspace Docker volume too:
