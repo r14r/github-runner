@@ -36,3 +36,20 @@ jobs:
           go build -trimpath -o ./github-runner-cli ./cmd/github-runner-cli
           ./github-runner-cli version
           ./github-runner-cli --help
+
+  bookbuilder-image:
+    name: BookBuilder image / pinned host doctor
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Linux x64 BookBuilder runner image
+        run: |
+          docker build --platform linux/amd64 --target bookbuilder \
+            -t github-actions-runner-ci:bookbuilder \
+            -f runner/docker/Dockerfile runner/docker
+      - name: Run the same host doctor pinned by BookBuilder
+        run: |
+          docker run --rm -i --platform linux/amd64 \
+            --entrypoint bash github-actions-runner-ci:bookbuilder \
+            -s < doctor-linux.sh
