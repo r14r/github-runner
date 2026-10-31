@@ -10,7 +10,7 @@ import (
 func testAssets(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	for _, path := range []string{"runner/docker/Dockerfile", "runner/04-run.sh", "doctor-linux.sh"} {
+	for _, path := range []string{"runner/docker/Dockerfile", "runner/04-run.sh", "scripts/doctor-linux.sh"} {
 		full := filepath.Join(root, filepath.FromSlash(path))
 		if e := os.MkdirAll(filepath.Dir(full), 0755); e != nil {
 			t.Fatal(e)
