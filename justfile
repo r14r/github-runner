@@ -24,7 +24,7 @@ ci: bootstrap
 # Portable application binary; scripts are installed separately as runtime assets.
 build: ci
     mkdir -p dist
-    go build -trimpath -o dist/github-runner-cli ./cmd/github-runner-cli
+    go build -trimpath -ldflags "-X main.version=$(cat VERSION)" -o dist/github-runner-cli ./cmd/github-runner-cli
     ./dist/github-runner-cli version
 
 # Install binary and runtime scripts; INSTALL_DIR defaults to /usr/local/bin.
