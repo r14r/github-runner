@@ -95,7 +95,13 @@ case "$action" in
     [[ -x "$RUNNER_INSTANCE/svc.sh" ]] || fail 'Runner service script svc.sh is missing.'
     cd "$RUNNER_INSTANCE"
     case "$action" in
-      install) ./svc.sh install ;;
+      install)
+        if [[ -f .service ]]; then
+          info "Runner service already installed; registration and service preserved."
+        else
+          ./svc.sh install
+        fi
+        ;;
       start) ./svc.sh start ;;
       stop) ./svc.sh stop ;;
       status)
