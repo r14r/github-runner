@@ -42,6 +42,7 @@ type uninstallOptions struct {
     All bool
     Yes bool
     DeleteData bool
+    DryRun bool
 }
 
 func parseUninstall(repo string, args []string) (uninstallOptions, error) {
@@ -51,12 +52,13 @@ func parseUninstall(repo string, args []string) (uninstallOptions, error) {
         case "--all": o.All = true
         case "--yes": o.Yes = true
         case "--delete-data": o.DeleteData = true
+        case "--dry-run": o.DryRun = true
         default: return o, fmt.Errorf("uninstall: unknown option %q",a)
         }
     }
     if o.Repo != "" && o.All { return o,errors.New("use either --repo or --all, not both") }
     if o.Repo == "" && !o.All { return o,errors.New("uninstall requires --repo OWNER/REPO or --all --yes") }
-    if o.All && !o.Yes { return o,errors.New("uninstall --all requires explicit --yes; nothing changed") }
+    if o.All && !o.Yes && !o.DryRun { return o,errors.New("uninstall --all requires explicit --yes; nothing changed") }
     return o,nil
 }
 
@@ -318,6 +320,16 @@ func uninstallCommand(repo string,args []string)error{
     }
     if !o.All&&!strings.EqualFold(plans[0].Local.Repository,o.Repo){
         return fmt.Errorf("runner belongs to %s, not %s; refusing to uninstall",plans[0].Local.Repository,o.Repo)
+    }
+    if o.DryRun {
+        for _,p:=range plans {
+            remote:="none"
+            if p.Remote!=nil {remote=fmt.Sprintf("%s (%d)",p.Remote.Name,p.Remote.ID)}
+            fmt.Printf("DRY RUN: repo=%s container=%s state=%s github=%s volume=%s delete-data=%t\n",
+                p.Local.Repository,p.Local.Container,p.Local.State,remote,p.Local.Volume,o.DeleteData)
+        }
+        fmt.Println("DRY RUN: no containers, GitHub registrations or volumes changed")
+        return nil
     }
     return executeRemoval(plans,o.DeleteData)
 }
