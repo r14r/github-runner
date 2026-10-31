@@ -14,7 +14,7 @@ var runnerActions = map[string]string{
  "configure":"02-configure.sh", "setup":"03-setup.sh",
  "pr":"03-setup.sh", "install-service":"04-run.sh",
  "start":"04-run.sh", "stop":"04-run.sh", "status":"04-run.sh",
- "monitor":"04-run.sh", "foreground":"04-run.sh",
+ "monitor":"04-run.sh", "foreground":"04-run.sh", "replace-container":"04-run.sh",
  "uninstall-service":"04-run.sh",
 }
 var hostActions = map[string]string{
