@@ -36,9 +36,9 @@ build: ci
 # INSTALL_DIR defaults to /usr/local/bin. Never touch runner registrations.
 install: build
     @destination="${INSTALL_DIR:-/usr/local/bin}"; \
-      mkdir -p "$destination/env/github-runner-cli/runner/lib" "$destination/env/github-runner-cli/runner/docker"; \
+      mkdir -p "$destination/env/github-runner-cli/scripts" "$destination/env/github-runner-cli/runner/lib" "$destination/env/github-runner-cli/runner/docker"; \
       install -m 0755 dist/github-runner-cli "$destination/github-runner-cli"; \
-      for f in ./*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/"; done; \
+      for f in scripts/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/scripts/"; done; \
       for f in runner/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/runner/"; done; \
       for f in runner/lib/*.sh; do install -m 0644 "$f" "$destination/env/github-runner-cli/runner/lib/"; done; \
       for f in runner/docker/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/runner/docker/"; done; \
