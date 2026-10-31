@@ -9,6 +9,8 @@ import (
  "strings"
 )
 
+var version = "dev" // overridden from root VERSION by just build
+
 var runnerActions = map[string]string{
  "download":"01-download.sh", "register":"02-configure.sh",
  "configure":"02-configure.sh", "setup":"03-setup.sh",
@@ -68,7 +70,7 @@ The CLI preserves the existing safety checks and registered runner volumes.
 func run(args []string, executable string, cwd string) error {
  if len(args)==0 {usage();return nil}
  if args[0]=="version" {
-  fmt.Println("github-runner-cli 0.2.0");return nil
+  fmt.Println("github-runner-cli "+version);return nil
  }
  if args[0]=="help" || args[0]=="--help" || args[0]=="-h" {usage();return nil}
  env,err:=assetsDir(executable,cwd);if err!=nil{return err}
