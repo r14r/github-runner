@@ -51,6 +51,7 @@ Usage:
   github-runner-cli stop OWNER/REPO
   github-runner-cli status OWNER/REPO
   github-runner-cli monitor OWNER/REPO
+  github-runner-cli refresh OWNER/REPO  # only after stopping an old container
   github-runner-cli version
   github-runner-cli runner <download|register|setup|install-service|start|stop|status|monitor|foreground|uninstall-service> OWNER/REPO [options]
   github-runner-cli runner docker-doctor
