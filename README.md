@@ -1,82 +1,113 @@
 # github-runner-cli
 
-Go CLI for managing repository-specific GitHub Actions self-hosted runners on
-Docker/Colima. Source of truth: `r14r/github-runner`. Version is read from
-root `VERSION` at build time.
+Go CLI to manage self-hosted GitHub Actions runners on Docker/Colima.
+Version: **0.3.1**. The repository is `r14r/github-runner`.
 
-## Build
-
-Go >=1.23 and `just` are required. **Python, pytest, and pip are no longer
-project development dependencies.**
+## Build and install
 
 ```sh
 just bootstrap
 just ci
 just build
 just install
-```
 
-The default binary installation directory is `/usr/local/bin`. To install
-without administrator privileges:
-
-```sh
+# Optional unprivileged install:
 INSTALL_DIR="$HOME/.local/bin" just install
 ```
 
-No service registration, runner credentials or Docker volumes are touched by
-`just install`: it only installs the CLI and runtime assets.
+`just install` installs the binary and runtime assets only; it does not
+register or stop any runner.
 
-## Install a repository-specific runner
+## Setup, start and monitor one repository
 
 ```sh
 export RUNNER_BACKEND=docker
 docker context use colima
 github-runner-cli runner docker-doctor
-
-# Public repositories require explicit acknowledgement:
-github-runner-cli install r14r/BookBuilder --allow-public
-github-runner-cli start r14r/BookBuilder
-github-runner-cli status r14r/BookBuilder
-github-runner-cli monitor r14r/BookBuilder
+github-runner-cli install --repo r14r/BookBuilder --allow-public
+github-runner-cli start --repo r14r/BookBuilder
+github-runner-cli status --repo r14r/BookBuilder
+github-runner-cli monitor --repository r14r/BookBuilder
+github-runner-cli stop --repo r14r/BookBuilder
 ```
 
-The `install` command builds the image, checks the required toolchain,
-registers the repository-specific runner only if missing, and creates the
-container. It does not start a job or modify target repository workflows.
-On `r14r/BookBuilder`, the selected Docker image contains the BookBuilder
-requirements (PHP 8.2, Java 21, just, ffmpeg, fontconfig, Typst 0.15.1).
+`--repo` and `--repository` are interchangeable. Repository flags can
+appear before or after other options, including `--repo=OWNER/REPO`.
+A positional `OWNER/REPO` is **no longer accepted**.
 
-To stop:
+## Show installed runners
 
 ```sh
-github-runner-cli stop r14r/BookBuilder
+# All runners installed in the current Docker/Colima context:
+github-runner-cli list-installed
+
+# Only one repo: show local runner plus all its GitHub runner registrations:
+github-runner-cli list-installed --repo r14r/BookBuilder
+github-runner-cli list-installed --repository r14r/github-runner-test
 ```
 
-To upgrade an existing container: verify GitHub reports `busy=false`,
-stop it, build the updated image, and explicitly refresh it:
+Without a repository flag, `list-installed` enumerates **local Docker
+containers and volumes** managed by this CLI (not every GitHub runner across
+all organizations). With `--repo` it additionally queries the repository
+GitHub API, including runners hosted on other machines.
+
+## Uninstall runner(s)
 
 ```sh
-github-runner-cli stop r14r/BookBuilder
-github-runner-cli runner download r14r/BookBuilder
-github-runner-cli refresh r14r/BookBuilder
-github-runner-cli start r14r/BookBuilder
+# Unregister the matching GitHub runner and remove its Docker container.
+# Preserves local volume, registration/workspace files and other images.
+github-runner-cli uninstall --repo r14r/BookBuilder
+
+# Permanently remove its registration/workspace Docker volume too:
+github-runner-cli uninstall --repo r14r/BookBuilder --delete-data
+
+# Remove all locally managed runners; explicit confirmation required:
+github-runner-cli uninstall --all --yes
+github-runner-cli uninstall --all --yes --delete-data
 ```
 
-The registration volume `github-runner-r14r-bookbuilder-state` is preserved.
-Do not stop a runner while it is executing a job.
-
-## Change workflow routing
+Uninstallation checks the exact local GitHub identity and the remote
+`busy` flag before modifying runner resources. It **refuses** to interrupt
+busy or unidentifiable registrations. Bulk removal preflights all managed
+runners before any change; it never deletes unrelated Docker volumes or
+images. Without `--delete-data`, the local registration files remain,
+even though the GitHub registration has been deleted. To reinstall such
+a runner, delete its stale data explicitly first.
 
 ```sh
-github-runner-cli runner setup r14r/BookBuilder \
+# Remove only the CLI application and <INSTALL>/env/github-runner-cli:
+github-runner-cli self-uninstall --yes
+```
+
+`self-uninstall` never stops or deregisters runners and never removes
+containers or Docker volumes. It refuses to run from a checkout or `go run`.
+
+## Refresh a runner image
+
+Check `busy=false` first, then:
+
+```sh
+github-runner-cli stop --repo r14r/BookBuilder
+github-runner-cli runner download --repo r14r/BookBuilder
+github-runner-cli refresh --repo r14r/BookBuilder
+github-runner-cli start --repo r14r/BookBuilder
+```
+
+The BookBuilder-specific image contains PHP 8.2, Java 21, just, ffmpeg,
+fontconfig and Typst 0.15.1.
+
+## Setup workflow routing
+
+```sh
+github-runner-cli runner setup --repo r14r/BookBuilder \
   --workflow .github/workflows/ci.yml --job python --allow-public
 ```
 
-This uses a native Go workflow patcher and opens a PR. It validates all
-selected workflows before writing, rejects dynamic `runs-on`, symlinks, and
-OS migrations without `--allow-cross-os`. It does not merge automatically.
+This validates the target workflow and opens a PR without automatically
+merging. Dynamic `runs-on` and cross-OS migrations are refused unless
+explicitly reviewed and enabled.
 
-## Installation files
+## Installed files and compatibility
 
 ```text
 <INSTALL>/
@@ -84,22 +115,17 @@ OS migrations without `--allow-cross-os`. It does not merge automatically.
 └── env/github-runner-cli/
     ├── runner/docker/Dockerfile
     ├── runner/docker/entrypoint.sh
-    ├── runner/*.sh          # compatibility only
-    └── *.sh                 # legacy macOS/Ubuntu host utilities
+    ├── runner/*.sh      # compatibility for older native host installations
+    └── *.sh             # legacy macOS/Ubuntu service-management scripts
 ```
 
-The Go CLI directly implements Docker provisioning, registration, lifecycle,
-monitoring and GitHub workflow patching. The official runner's container
-entrypoint remains a shell script. Older macOS launchd/Ubuntu systemd host
-installers and recovery tools remain as packaged compatibility assets and
-have **not yet** been converted to native Go. Never remove active service or
-registration files during migration.
-
-The CI pipeline uses Go tests, `go vet`, `gofmt`, race tests, and a separate
-Docker build+BookBuilder doctor. No Python or pytest invocation is required.
+Docker runner management and workflow patching are written in Go.
+Older macOS launchd and Ubuntu systemd scripts are retained only as
+compatibility assets and are not affected by Docker uninstall operations.
+The CLI development/CI workflow has no Python or pytest dependency.
 
 ### Security
 
-Public GitHub repositories can run untrusted pull-request code. Never give
-untrusted workflows the host's Docker socket or credentials.
-`RUNNER_DOCKER_SOCKET=1` explicitly grants privileged Docker access.
+Never run untrusted public pull-request code on runners with host privileges.
+`RUNNER_DOCKER_SOCKET=1` provides privileged Docker daemon access and
+remains an explicit opt-in.
