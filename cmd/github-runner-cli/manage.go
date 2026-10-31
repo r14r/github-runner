@@ -233,7 +233,7 @@ type removePlan struct{
 
 // Preflight all candidates first: if any remote registration is busy, missing
 // credentials or identity cannot be read, do not modify any runner.
-func planRemoval(repos []string)([]removePlan,error){
+func planRemoval(repos []string, explicitRepo string)([]removePlan,error){
     plans:=make([]removePlan,0,len(repos))
     remoteCache:=map[string][]runnerRecord{}
     for _,slug:=range repos{
