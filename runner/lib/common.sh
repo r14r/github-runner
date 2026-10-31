@@ -9,7 +9,11 @@ RUNNER_CACHE="${RUNNER_CACHE:-$RUNNER_ROOT/../.local/cache}"
 RUNNER_VERSION="2.338.1"
 RUNNER_SHA256_OSX_X64="f06e329ffe90a2a4bda8b460a20b9e26dcb7525a093bf9b4f89125c72bc1f39e"
 RUNNER_SHA256_LINUX_X64="08e9ccb3604d2462c24b5e33604dc30810296ca15cc65f23cffd4317eb144c37"
-RUNNER_IMAGE="${RUNNER_IMAGE:-github-actions-runner-local:$RUNNER_VERSION}"
+# Resolve image profile per repository. Explicit image override remains supported.
+RUNNER_IMAGE_OVERRIDE="${RUNNER_IMAGE:-}"
+RUNNER_PROFILE="${RUNNER_PROFILE:-auto}"
+RUNNER_IMAGE=""
+
 
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 info() { printf '==> %s\n' "$*" >&2; }
@@ -28,6 +32,26 @@ set_repo() {
   RUNNER_LABEL="repo-$RUNNER_SLUG"
   RUNNER_CONTAINER="github-runner-$RUNNER_SLUG"
   RUNNER_VOLUME="github-runner-$RUNNER_SLUG-state"
+  case "$RUNNER_PROFILE" in
+    auto)
+      if [[ "$RUNNER_SLUG" == r14r-bookbuilder ]]; then
+        RUNNER_PROFILE=bookbuilder
+      else
+        RUNNER_PROFILE=runner-base
+      fi
+      ;;
+    generic) RUNNER_PROFILE=runner-base ;;
+    runner-base|bookbuilder) ;;
+    *) fail "RUNNER_PROFILE must be auto, generic, runner-base, or bookbuilder." ;;
+  esac
+  if [[ -n "$RUNNER_IMAGE_OVERRIDE" ]]; then
+    RUNNER_IMAGE="$RUNNER_IMAGE_OVERRIDE"
+  elif [[ "$RUNNER_PROFILE" == bookbuilder ]]; then
+    RUNNER_IMAGE="github-actions-runner-local:$RUNNER_VERSION-bookbuilder"
+  else
+    RUNNER_IMAGE="github-actions-runner-local:$RUNNER_VERSION"
+  fi
+
 }
 
 require_macos_supported() {

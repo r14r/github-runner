@@ -88,7 +88,8 @@ def test_standalone_justfile_has_six_working_commands():
     for command in ("install", "doctor", "start", "stop", "status"):
         assert f"\n{command}:" in recipe
     assert "\nmonitor interval=" in recipe
-    assert "bash ./install.sh" in recipe
+    assert "install -m 0755 dist/github-runner-cli" in recipe
+    assert "go build" in recipe
     for action in ("start", "stop", "status", "monitor"):
         assert f"bash ./control.sh {action}" in recipe
     assert not (ROOT / "obsolete-scripts-runner").exists()

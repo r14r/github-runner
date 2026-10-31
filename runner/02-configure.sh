@@ -4,16 +4,18 @@ set -euo pipefail
 source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
 
 usage() {
-  echo "Usage: $0 OWNER/REPO [--allow-public] [--name RUNNER_NAME]"
+  echo "Usage: $0 OWNER/REPO [--allow-public] [--name RUNNER_NAME] [--if-needed]"
   exit 2
 }
 [[ $# -ge 1 ]] || usage
 set_repo "$1"; shift
 allow_public=false
+if_needed=false
 name="$(hostname -s | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9._-')-$RUNNER_SLUG"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --allow-public) allow_public=true; shift ;;
+    --if-needed) if_needed=true; shift ;;
     --name) [[ $# -ge 2 ]] || usage; name="$2"; shift 2 ;;
     *) usage ;;
   esac
@@ -25,10 +27,22 @@ check_public_repo "$allow_public"
 if [[ "$RUNNER_SELECTED_BACKEND" == docker ]]; then
   docker image inspect "$RUNNER_IMAGE" >/dev/null 2>&1 || fail 'Run ./01-download.sh first (Docker runner image missing).'
   docker volume inspect "$RUNNER_VOLUME" >/dev/null 2>&1 || fail 'Run ./01-download.sh first (state volume missing).'
-  if docker_state_exists; then fail "Runner already configured in volume $RUNNER_VOLUME"; fi
+  if docker_state_exists; then
+    if [[ "$if_needed" == true ]]; then
+      info "Runner already configured in volume $RUNNER_VOLUME; preserving registration."
+      exit 0
+    fi
+    fail "Runner already configured in volume $RUNNER_VOLUME"
+  fi
 else
   [[ -f "$RUNNER_INSTANCE/config.sh" ]] || fail "Run ./01-download.sh '$REPOSITORY' first."
-  [[ ! -f "$RUNNER_INSTANCE/.runner" ]] || fail "Runner already configured at $RUNNER_INSTANCE."
+  if [[ -f "$RUNNER_INSTANCE/.runner" ]]; then
+    if [[ "$if_needed" == true ]]; then
+      info "Runner already configured at $RUNNER_INSTANCE; preserving registration."
+      exit 0
+    fi
+    fail "Runner already configured at $RUNNER_INSTANCE."
+  fi
 fi
 
 info "Requesting a fresh registration token for $REPOSITORY via GitHub API"

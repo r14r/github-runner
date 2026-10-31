@@ -8,12 +8,18 @@ set_repo "$1"
 select_backend
 if [[ "$RUNNER_SELECTED_BACKEND" == docker ]]; then
   bash "$RUNNER_ROOT/docker/doctor.sh"
-  info "Building Linux x64 GitHub Actions runner $RUNNER_VERSION for $REPOSITORY"
+  info "Building Linux x64 GitHub Actions runner $RUNNER_VERSION for $REPOSITORY (profile: $RUNNER_PROFILE)"
   docker build --platform linux/amd64 \
+    --target "$RUNNER_PROFILE" \
     --build-arg "RUNNER_VERSION=$RUNNER_VERSION" \
     --build-arg "RUNNER_SHA256_LINUX_X64=$RUNNER_SHA256_LINUX_X64" \
     --tag "$RUNNER_IMAGE" \
     --file "$RUNNER_ROOT/docker/Dockerfile" "$RUNNER_ROOT/docker"
+  if [[ "$RUNNER_PROFILE" == bookbuilder ]]; then
+    info "Validating BookBuilder dependencies inside the new image"
+    docker run --rm --interactive --platform linux/amd64 \
+      --entrypoint bash "$RUNNER_IMAGE" -s < "$RUNNER_ROOT/../doctor-linux.sh"
+  fi
   docker volume create "$RUNNER_VOLUME" >/dev/null
   info "Docker runner image ready: $RUNNER_IMAGE (volume: $RUNNER_VOLUME)"
   exit 0
