@@ -7,6 +7,7 @@ source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
 set_repo "$1"
 select_backend
 if [[ "$RUNNER_SELECTED_BACKEND" == docker ]]; then
+  bash "$RUNNER_ROOT/docker/doctor.sh"
   info "Building Linux x64 GitHub Actions runner $RUNNER_VERSION for $REPOSITORY"
   docker build --platform linux/amd64 \
     --build-arg "RUNNER_VERSION=$RUNNER_VERSION" \
