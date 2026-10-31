@@ -39,6 +39,7 @@ jobs:
           INSTALL_DIR="$RUNNER_TEMP/bin" just install
           test "$("$RUNNER_TEMP/bin/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
           "$RUNNER_TEMP/bin/github-runner-cli" --help
+          "$RUNNER_TEMP/bin/github-runner-cli" list-installed --help 2>/dev/null || true
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/runner/docker/Dockerfile"
 
   bookbuilder-image:
