@@ -60,6 +60,7 @@ Flags:
   --all                           Select all LOCAL managed runner installations
   --yes                           Required for bulk operations and self-uninstall
   --delete-data                   Delete persistent runner registration/workspace volume
+  --dry-run                       Preview uninstall actions without making changes
 
 Notes:
   list-installed without --repo lists local Docker runner containers and volumes.
