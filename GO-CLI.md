@@ -1,16 +1,42 @@
-# Go CLI migration status
+# Go CLI v0.3.1
 
-Version: `0.3.0`
+Main entry point: `cmd/github-runner-cli/main.go`.
+Repository-specific operations: `cmd/github-runner-cli/docker.go`.
+Workflow patcher: `internal/workflow/patch.go`.
 
-## Native Go components
-- `cmd/github-runner-cli/main.go`: CLI and command parsing.
-- `cmd/github-runner-cli/docker.go`: Docker/Colima diagnostic, image selection,
-  downloads, repository registration, services, status, monitoring, and refresh.
-- `cmd/github-runner-cli/setup.go`: GitHub workflow PR workflow using gh/git.
-- `internal/workflow/patch.go`: conservative, validated workflow rewriting.
-- All active project tests are Go tests under `*_test.go`.
+## Required CLI flags
 
-## Installation and CI
+For all repository-scoped commands use `--repo OWNER/REPO` or the equivalent
+`--repository OWNER/REPO`, **not** a positional repository argument.
+
+```sh
+github-runner-cli install --repo r14r/BookBuilder --allow-public
+github-runner-cli start --repo r14r/BookBuilder
+github-runner-cli status --repository r14r/BookBuilder
+github-runner-cli list-installed
+github-runner-cli list-installed --repo r14r/BookBuilder
+github-runner-cli uninstall --repo r14r/BookBuilder
+github-runner-cli uninstall --all --yes --delete-data
+github-runner-cli self-uninstall --yes
+```
+
+## Safety invariants
+
+- `list-installed` without repo lists the current Docker daemon's installed
+  runner containers/volumes, **not** every registered runner on GitHub.
+- `list-installed --repo` also shows registrations from the GitHub API.
+- Uninstallation correlates remote runner ID/name with local registration;
+  detects `busy` and refuses to interrupt jobs.
+- No bulk deletion without `--all --yes`.
+- Docker volumes are preserved unless `--delete-data` is supplied.
+- No Docker image pruning or deletion as part of runner uninstall.
+- `self-uninstall` only removes the installed CLI binary and its adjacent
+  `env/github-runner-cli` directory; running runners remain untouched.
+- Legacy macOS/Ubuntu host-managed service scripts are not uninstalled
+  via Docker runner commands; do not confuse them with Docker containers.
+
+## Build and validation
+
 ```sh
 just bootstrap
 just ci
@@ -18,19 +44,6 @@ just build
 just install
 ```
 
-Installation copies `github-runner-cli` to `<INSTALL>/github-runner-cli`
-and any required shell runtime compatibility files to
-`<INSTALL>/env/github-runner-cli`.
-
-## Temporary compatibility boundary
-
-The official GitHub runner is a separate upstream executable with its own
-entrypoint and `config.sh`/`run.sh`/`svc.sh` scripts. The self-hosted
-container uses a minimal `entrypoint.sh`. The previous standalone host
-services (macOS launchd / Ubuntu systemd) still use vetted legacy shell
-scripts; they are only invoked under `github-runner-cli host ...`. For
-repository-specific Docker runners, lifecycle and workflow setup are native Go.
-
-Do not remove existing runner registrations or volumes to migrate them.
-The Go CI no longer depends on Python/pytest. Existing host systemd/launchd
-scripts require dedicated real-host validation before replacement.
+Only Go tooling is required for the project CI; installation includes the
+Docker entrypoint script and legacy host scripts as runtime assets. See
+`README.md` for a complete command reference.
