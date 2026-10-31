@@ -33,19 +33,40 @@ The Go binary dispatches the existing host/runner operations to packaged, audite
 
 ## Running a repository-specific runner
 
+The five top-level commands are the recommended interface. Use the Docker
+backend on macOS Monterey/Colima. `install` downloads/builds the runner,
+registers it when not already registered, and creates its service container;
+`start` is intentionally separate. Existing volumes and registrations are
+retained on repeated installation.
+
 ```sh
 export RUNNER_BACKEND=docker
+
+# New private repository:
+github-runner-cli install r14r/example-repo
+
+# New public repository (explicit security acknowledgement):
+github-runner-cli install r14r/BookBuilder --allow-public
+
+github-runner-cli start r14r/BookBuilder
+github-runner-cli status r14r/BookBuilder
+github-runner-cli monitor r14r/BookBuilder   # Ctrl+C ends monitoring
+github-runner-cli stop r14r/BookBuilder
+```
+
+The underlying explicit, stepwise commands are still supported:
+
+```sh
 github-runner-cli runner docker-doctor
 github-runner-cli runner download r14r/BookBuilder
-# For private repositories:
-github-runner-cli runner register r14r/BookBuilder
-# For public repositories, explicitly acknowledge the risk:
 github-runner-cli runner register r14r/BookBuilder --allow-public
 github-runner-cli runner install-service r14r/BookBuilder
 github-runner-cli runner start r14r/BookBuilder
-github-runner-cli runner status r14r/BookBuilder
-github-runner-cli runner monitor r14r/BookBuilder
 ```
+
+**Safety:** Public repositories require `--allow-public`; do not schedule
+untrusted pull request workflows on a privileged self-hosted runner.
+`RUNNER_DOCKER_SOCKET=1` grants powerful Docker host access and remains opt-in.
 
 ## Additional commands
 
