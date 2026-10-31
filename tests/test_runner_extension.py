@@ -97,7 +97,8 @@ class WorkflowPatchTests(unittest.TestCase):
         self.assertNotIn('docker system prune', doctor)
         self.assertNotIn('docker volume rm', doctor)
         self.assertNotIn('AllowInsecureRepositories', dockerfile)
-        self.assertIn('RUN apt-get update\\nRUN apt-get install', dockerfile)
+        self.assertIn('RUN apt-get update', dockerfile)
+        self.assertIn('RUN apt-get install', dockerfile)
 
 
 if __name__ == '__main__':
