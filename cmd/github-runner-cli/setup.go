@@ -96,8 +96,9 @@ func setupWorkflow(args []string)error{
  targetOS:="Linux"
  if backend=="macos"{targetOS="macOS"}else if backend!="docker"{return fmt.Errorf("unsupported backend %s",backend)}
  if backend=="docker"{
-  volume:="github-runner-"+slug+"-state"
-  if e:=commandRun("","docker","volume","inspect",volume);e!=nil{return fmt.Errorf("runner volume not registered: %w",e)}
+  runner,e:=newDockerRunner(o.repo,"")
+  if e!=nil{return e}
+  if !runner.stateConfigured(){return fmt.Errorf("runner not registered for %s; install it first",o.repo)}
  }else {
   return errors.New("native macOS workflow setup is not available in the Go migration; no changes made")
  }
