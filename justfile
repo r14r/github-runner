@@ -85,7 +85,10 @@ migrate-from-bookbuilder source:
 clean:
     rm -rf dist
 
-# Repository-scoped Docker/Colima runners (extension v0.1.2).
+# Repository-scoped Docker/Colima runners.
+runner-docker-doctor:
+    bash runner/docker/doctor.sh
+
 runner-download repo:
     bash runner/01-download.sh "{{repo}}"
 
