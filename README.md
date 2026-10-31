@@ -118,7 +118,7 @@ explicitly reviewed and enabled.
     ├── runner/docker/Dockerfile
     ├── runner/docker/entrypoint.sh
     ├── runner/*.sh      # compatibility for older native host installations
-    └── *.sh             # legacy macOS/Ubuntu service-management scripts
+    └── scripts/*.sh     # legacy macOS/Ubuntu service-management scripts
 ```
 
 Docker runner management and workflow patching are written in Go.
