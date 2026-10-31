@@ -108,7 +108,7 @@ func run(args []string, executable string, cwd string) error {
   extras:=args[2:]
   if args[1]=="install-service" {extras=append([]string{extras[0],"install"},extras[1:]...)}
   if args[1]=="uninstall-service" {extras=append([]string{extras[0],"uninstall"},extras[1:]...)}
-  for _,action:=range []string{"start","stop","status","monitor","foreground"} {
+  for _,action:=range []string{"start","stop","status","monitor","foreground","replace-container"} {
    if args[1]==action {extras=append([]string{extras[0],action},extras[1:]...)}
   }
   return execute(filepath.Join(env,"runner",script),extras)
