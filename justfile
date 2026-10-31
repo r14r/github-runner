@@ -14,7 +14,7 @@ bootstrap:
 
 # Validate Go code and preserve existing Bash/Python regression tests.
 ci: bootstrap
-        gofmt -w ./cmd
+    gofmt -w ./cmd
     go vet ./...
     go test ./...
     @for f in ./*.sh runner/*.sh runner/lib/*.sh runner/docker/*.sh; do bash -n "$f"; done
