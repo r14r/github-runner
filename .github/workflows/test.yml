@@ -52,18 +52,15 @@ jobs:
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/doctor-linux.sh"
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/control.sh"
           test ! -e "$RUNNER_TEMP/bin/env/github-runner-cli/doctor-linux.sh"
-      - name: Analyze real BookBuilder workflows without execution
+      - name: Analyze current repository workflows without execution
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           "$RUNNER_TEMP/bin/github-runner-cli" requirements \
-            --repo r14r/BookBuilder --output "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq 'repository: "r14r/BookBuilder"' "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq 'name: "python"' "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq 'name: "java"' "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq 'name: "typst"' "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq 'name: "ruby"' "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq '"actions/checkout@v7"' "$RUNNER_TEMP/toolchain.yaml"
+            --repo r14r/github-runner --output "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq 'repository: "r14r/github-runner"' "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq 'name: "go"' "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq '"actions/setup-go@v5"' "$RUNNER_TEMP/toolchain.yaml"
 
   bookbuilder-image:
     runs-on: ubuntu-24.04
