@@ -39,17 +39,18 @@ build: ci
     go build -trimpath -ldflags "-X main.version=$(cat VERSION)" -o dist/github-runner-cli ./cmd/github-runner-cli
     ./dist/github-runner-cli version
 
-# Binary + only the remaining host/container compatibility assets.
-# INSTALL_DIR defaults to /usr/local/bin. Never touch runner registrations.
+# Install the Go binary and generic Docker runtime assets. Does not touch
+# registration volumes, containers, running jobs or GitHub registrations.
 install: build
     @destination="${INSTALL_DIR:-/usr/local/bin}"; \
-      mkdir -p "$destination/env/github-runner-cli/scripts" "$destination/env/github-runner-cli/runner/lib" "$destination/env/github-runner-cli/runner/docker"; \
+      runtime="$destination/env/github-runner-cli"; \
+      mkdir -p "$runtime/runner/docker"; \
       install -m 0755 dist/github-runner-cli "$destination/github-runner-cli"; \
-      for f in scripts/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/scripts/"; done; \
-      for f in runner/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/runner/"; done; \
-      for f in runner/lib/*.sh; do install -m 0644 "$f" "$destination/env/github-runner-cli/runner/lib/"; done; \
-      for f in runner/docker/*.sh; do install -m 0755 "$f" "$destination/env/github-runner-cli/runner/docker/"; done; \
-      install -m 0644 runner/docker/Dockerfile "$destination/env/github-runner-cli/runner/docker/Dockerfile"; \
+      install -m 0755 runner/docker/entrypoint.sh "$runtime/runner/docker/entrypoint.sh"; \
+      install -m 0755 runner/docker/doctor.sh "$runtime/runner/docker/doctor.sh"; \
+      install -m 0644 runner/docker/Dockerfile "$runtime/runner/docker/Dockerfile"; \
+      rm -rf "$runtime/scripts" "$runtime/runner/lib"; \
+      rm -f "$runtime/runner/01-download.sh" "$runtime/runner/02-configure.sh" "$runtime/runner/04-run.sh"; \
       test "$("$destination/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
 
 run *args:
@@ -85,16 +86,10 @@ runner-pr repository job workflow=".github/workflows/ci.yml":
 list-installed *args:
     go run ./cmd/github-runner-cli list-installed {{args}}
 
-# Uninstall is intentionally not a just recipe: use installed binary with flags.
-# Legacy host scripts remain available only for existing registrations.
+# Uninstall is intentionally not a just recipe: use the CLI with explicit flags.
 doctor:
-    go run ./cmd/github-runner-cli host doctor
-
-migrate:
-    go run ./cmd/github-runner-cli host migrate
-
-repair:
-    go run ./cmd/github-runner-cli host repair
+    @echo 'Use: github-runner-cli doctor --repo OWNER/REPO' >&2
+    @exit 2
 
 start:
     @echo 'Use: github-runner-cli start --repo OWNER/REPO' >&2
