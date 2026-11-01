@@ -43,12 +43,15 @@ func gitHubRepository(repo string) string {
 	repo = strings.TrimPrefix(strings.TrimPrefix(repo, "https://github.com/"), "http://github.com/")
 	return strings.TrimSuffix(strings.TrimSuffix(repo, "/"), ".git")
 }
+
 // The supported runner backend is Docker on Linux/macOS (including Colima).
 // Native host-service management has been retired; no target repo is implied.
 func selectedBackend() string {
-    b:=os.Getenv("RUNNER_BACKEND")
-    if b==""||b=="auto"{return "docker"}
-    return b
+	b := os.Getenv("RUNNER_BACKEND")
+	if b == "" || b == "auto" {
+		return "docker"
+	}
+	return b
 }
 
 type setupOptions struct {

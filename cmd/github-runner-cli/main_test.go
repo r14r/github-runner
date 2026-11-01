@@ -43,7 +43,6 @@ func TestBadArgumentsDoNotModifyRunnerState(t *testing.T) {
 		{"start"}, {"stop", "example-org/demo-app", "extra"},
 		{"runner"}, {"runner", "unknown", "example-org/demo-app"},
 		{"runner", "register", "invalid"},
-		
 	} {
 		if e := run(args, filepath.Join(root, "cli"), root); e == nil {
 			t.Errorf("accepted invalid %v", args)

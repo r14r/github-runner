@@ -111,7 +111,6 @@ func TestHelpAliasesDocumentAllImplementedActions(t *testing.T) {
 		"runner configure", "runner setup", "runner pr", "runner install-service",
 		"runner start", "runner stop", "runner status", "runner monitor",
 		"runner foreground", "runner replace-container", "runner uninstall-service",
-
 	} {
 		if _, ok := commandDocs[name]; !ok {
 			t.Errorf("no documentation for %s", name)

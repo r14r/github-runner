@@ -258,51 +258,60 @@ func inspectWorkflowDirectory(repo, root, revision, profile, image string) (tool
 	sort.Strings(manifest.Warnings)
 	return manifest, nil
 }
+
 // discoverRequirements never exposes Git transfer progress on success.
 // Git output is retained and attached to errors so cloning remains debuggable.
 func discoverRequirements(r dockerRunner) (toolchainManifest, error) {
-    return discoverRequirementsWithProgress(r, io.Discard)
+	return discoverRequirementsWithProgress(r, io.Discard)
 }
 
 func capturedGit(dir string, program string, args ...string) error {
-    cmd := exec.Command(program, args...)
-    cmd.Dir = dir
-    cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
-    output, err := cmd.CombinedOutput()
-    if err != nil {
-        detail := strings.TrimSpace(string(output))
-        if len(detail) > 2048 { detail = detail[len(detail)-2048:] }
-        return fmt.Errorf("%s failed: %w: %s", program, err, detail)
-    }
-    return nil
+	cmd := exec.Command(program, args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		detail := strings.TrimSpace(string(output))
+		if len(detail) > 2048 {
+			detail = detail[len(detail)-2048:]
+		}
+		return fmt.Errorf("%s failed: %w: %s", program, err, detail)
+	}
+	return nil
 }
 
 func discoverRequirementsWithProgress(r dockerRunner, out io.Writer) (toolchainManifest, error) {
-    var empty toolchainManifest
-    if _, err := exec.LookPath("gh"); err != nil {
-        return empty, fmt.Errorf("GitHub CLI is required for requirements: %w", err)
-    }
-    if _, err := exec.LookPath("git"); err != nil {
-        return empty, fmt.Errorf("Git is required for requirements: %w", err)
-    }
-    fmt.Fprintln(out, "01: Clone repository")
-    fmt.Fprintf(out, "    Repository: %s\n", r.Repo)
-    dir, err := os.MkdirTemp("", "ghr-requirements-")
-    if err != nil { return empty, err }
-    defer os.RemoveAll(dir)
-    if err := capturedGit("", "gh", "repo", "clone", r.Repo, dir, "--", "--depth=1", "--filter=blob:none", "--sparse", "--quiet"); err != nil {
-        return empty, fmt.Errorf("cannot clone %s: %w", r.Repo, err)
-    }
-    if err := capturedGit(dir, "git", "sparse-checkout", "set", ".github/workflows"); err != nil {
-        return empty, fmt.Errorf("cannot read workflows of %s: %w", r.Repo, err)
-    }
-    rev, err := commandOutput(dir, "git", "rev-parse", "HEAD")
-    if err != nil { return empty, err }
-    m, err := inspectWorkflowDirectory(r.Repo, dir, rev, r.Profile, r.Image)
-    if err != nil { return empty, err }
-    fmt.Fprintf(out, "    Revision:   %.12s\n", rev)
-    fmt.Fprintln(out, "    Status:     OK")
-    return m, nil
+	var empty toolchainManifest
+	if _, err := exec.LookPath("gh"); err != nil {
+		return empty, fmt.Errorf("GitHub CLI is required for requirements: %w", err)
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		return empty, fmt.Errorf("Git is required for requirements: %w", err)
+	}
+	fmt.Fprintln(out, "01: Clone repository")
+	fmt.Fprintf(out, "    Repository: %s\n", r.Repo)
+	dir, err := os.MkdirTemp("", "ghr-requirements-")
+	if err != nil {
+		return empty, err
+	}
+	defer os.RemoveAll(dir)
+	if err := capturedGit("", "gh", "repo", "clone", r.Repo, dir, "--", "--depth=1", "--filter=blob:none", "--sparse", "--quiet"); err != nil {
+		return empty, fmt.Errorf("cannot clone %s: %w", r.Repo, err)
+	}
+	if err := capturedGit(dir, "git", "sparse-checkout", "set", ".github/workflows"); err != nil {
+		return empty, fmt.Errorf("cannot read workflows of %s: %w", r.Repo, err)
+	}
+	rev, err := commandOutput(dir, "git", "rev-parse", "HEAD")
+	if err != nil {
+		return empty, err
+	}
+	m, err := inspectWorkflowDirectory(r.Repo, dir, rev, r.Profile, r.Image)
+	if err != nil {
+		return empty, err
+	}
+	fmt.Fprintf(out, "    Revision:   %.12s\n", rev)
+	fmt.Fprintln(out, "    Status:     OK")
+	return m, nil
 }
 
 func parseRequirementsArgs(args []string) (string, string, error) {
@@ -379,137 +388,200 @@ func requirementsCommand(repo string, output string, assets string) error {
 	}
 	return nil
 }
+
 // Image build arguments are derived exclusively from a small, audited map of
 // packages. Never feed arbitrary YAML content directly into apt/dpkg or shell.
-func provisionArgs(m toolchainManifest) ([]string,error) {
-    if len(m.Warnings)>0 {
-        return nil,fmt.Errorf("%d unresolved workflow requirements; inspect 'requirements --repo %s'",len(m.Warnings),m.Repository)
-    }
-    packages:=map[string]bool{}
-    just,typst:=false,false
-    for _,t:=range m.Tools {
-        if toolManagedByWorkflow(t) {continue}
-        switch t.Name{
-        case "python":
-            if t.Version!=""&&t.Version!="3.12" {return nil,fmt.Errorf("python %s requires actions/setup-python or a custom image",t.Version)}
-        case "docker":
-            // Docker CLI is part of runner-base. Socket access is separately opt-in.
-        case "ffmpeg":
-            packages["ffmpeg"]=true
-        case "fontconfig":
-            packages["fontconfig"]=true
-        case "java":
-            if t.Version!=""&&t.Version!="21" {return nil,fmt.Errorf("java %s unsupported in generic image; use actions/setup-java",t.Version)}
-            packages["openjdk-21-jre-headless"]=true
-        case "php":
-            if t.Version!=""&&t.Version!="8.3"{return nil,fmt.Errorf("php %s unsupported in Ubuntu 24.04 base; use a setup action or custom image",t.Version)}
-            packages["php-cli"]=true
-        case "just":
-            if t.Version!=""&&t.Version!="1.58.0"{return nil,fmt.Errorf("just %s unsupported; supported pinned release 1.58.0",t.Version)}
-            just=true
-        case "typst":
-            if t.Version!=""&&t.Version!="0.15.1"{return nil,fmt.Errorf("typst %s unsupported; use typst-community/setup-typst",t.Version)}
-            typst=true
-        default:
-            return nil,fmt.Errorf("tool %s not provisioned automatically; add its setup action or extend the generic builder",t.Name)
-        }
-    }
-    names:=make([]string,0,len(packages))
-    for p:=range packages{names=append(names,p)}
-    sort.Strings(names)
-    flag:=func(name,value string)[]string{return []string{"--build-arg",name+"="+value}}
-    args:=flag("EXTRA_APT_PACKAGES",strings.Join(names," "))
-    if just{args=append(args,flag("INSTALL_JUST","1")...)}
-    if typst{args=append(args,flag("INSTALL_TYPST","1")...)}
-    return args,nil
+func provisionArgs(m toolchainManifest) ([]string, error) {
+	if len(m.Warnings) > 0 {
+		return nil, fmt.Errorf("%d unresolved workflow requirements; inspect 'requirements --repo %s'", len(m.Warnings), m.Repository)
+	}
+	packages := map[string]bool{}
+	just, typst := false, false
+	for _, t := range m.Tools {
+		if toolManagedByWorkflow(t) {
+			continue
+		}
+		switch t.Name {
+		case "python":
+			if t.Version != "" && t.Version != "3.12" {
+				return nil, fmt.Errorf("python %s requires actions/setup-python or a custom image", t.Version)
+			}
+		case "docker":
+			// Docker CLI is part of runner-base. Socket access is separately opt-in.
+		case "ffmpeg":
+			packages["ffmpeg"] = true
+		case "fontconfig":
+			packages["fontconfig"] = true
+		case "java":
+			if t.Version != "" && t.Version != "21" {
+				return nil, fmt.Errorf("java %s unsupported in generic image; use actions/setup-java", t.Version)
+			}
+			packages["openjdk-21-jre-headless"] = true
+		case "php":
+			if t.Version != "" && t.Version != "8.3" {
+				return nil, fmt.Errorf("php %s unsupported in Ubuntu 24.04 base; use a setup action or custom image", t.Version)
+			}
+			packages["php-cli"] = true
+		case "just":
+			if t.Version != "" && t.Version != "1.58.0" {
+				return nil, fmt.Errorf("just %s unsupported; supported pinned release 1.58.0", t.Version)
+			}
+			just = true
+		case "typst":
+			if t.Version != "" && t.Version != "0.15.1" {
+				return nil, fmt.Errorf("typst %s unsupported; use typst-community/setup-typst", t.Version)
+			}
+			typst = true
+		default:
+			return nil, fmt.Errorf("tool %s not provisioned automatically; add its setup action or extend the generic builder", t.Name)
+		}
+	}
+	names := make([]string, 0, len(packages))
+	for p := range packages {
+		names = append(names, p)
+	}
+	sort.Strings(names)
+	flag := func(name, value string) []string { return []string{"--build-arg", name + "=" + value} }
+	args := flag("EXTRA_APT_PACKAGES", strings.Join(names, " "))
+	if just {
+		args = append(args, flag("INSTALL_JUST", "1")...)
+	}
+	if typst {
+		args = append(args, flag("INSTALL_TYPST", "1")...)
+	}
+	return args, nil
 }
 
-func toolManagedByWorkflow(t toolRequirement)bool {
-    // Recognized setup actions provision language runtimes at workflow step
-    // execution time, not as part of the persistent Docker image.
-    return strings.Contains(t.Source,"setup-python@")||
-        strings.Contains(t.Source,"setup-java@")||
-        strings.Contains(t.Source,"setup-node@")||
-        strings.Contains(t.Source,"setup-go@")||
-        strings.Contains(t.Source,"setup-ruby@")||
-        strings.Contains(t.Source,"setup-typst@")||
-        strings.Contains(t.Source,"setup-php@")
+func toolManagedByWorkflow(t toolRequirement) bool {
+	// Recognized setup actions provision language runtimes at workflow step
+	// execution time, not as part of the persistent Docker image.
+	return strings.Contains(t.Source, "setup-python@") ||
+		strings.Contains(t.Source, "setup-java@") ||
+		strings.Contains(t.Source, "setup-node@") ||
+		strings.Contains(t.Source, "setup-go@") ||
+		strings.Contains(t.Source, "setup-ruby@") ||
+		strings.Contains(t.Source, "setup-typst@") ||
+		strings.Contains(t.Source, "setup-php@")
 }
 
-func toolchainBuildArgs(m toolchainManifest)([]string,error){
-    if m.Profile=="runner-base"{
-        for _,t:=range m.Tools {
-            if toolManagedByWorkflow(t){continue}
-            if t.Name!="python"&&t.Name!="docker"{
-                return nil,fmt.Errorf("runner-base does not provide %s; use RUNNER_PROFILE=toolchain",t.Name)
-            }
-        }
-        if len(m.Warnings)>0{return nil,fmt.Errorf("%d unresolved workflow requirements",len(m.Warnings))}
-        return nil,nil
-    }
-    if m.Profile!="toolchain"{return nil,fmt.Errorf("unsupported image profile %q",m.Profile)}
-    return provisionArgs(m)
+func toolchainBuildArgs(m toolchainManifest) ([]string, error) {
+	if m.Profile == "runner-base" {
+		for _, t := range m.Tools {
+			if toolManagedByWorkflow(t) {
+				continue
+			}
+			if t.Name != "python" && t.Name != "docker" {
+				return nil, fmt.Errorf("runner-base does not provide %s; use RUNNER_PROFILE=toolchain", t.Name)
+			}
+		}
+		if len(m.Warnings) > 0 {
+			return nil, fmt.Errorf("%d unresolved workflow requirements", len(m.Warnings))
+		}
+		return nil, nil
+	}
+	if m.Profile != "toolchain" {
+		return nil, fmt.Errorf("unsupported image profile %q", m.Profile)
+	}
+	return provisionArgs(m)
 }
 
-func validateProfile(m toolchainManifest)error{
-    _,err:=toolchainBuildArgs(m)
-    return err
+func validateProfile(m toolchainManifest) error {
+	_, err := toolchainBuildArgs(m)
+	return err
 }
 
 // doctor is a read-only image check; actions that provision their own
 // runtimes are listed as workflow-managed, not misreported as host tools.
 func toolchainDoctor(r dockerRunner) error {
-    fmt.Fprintln(os.Stdout, "GitHub Runner — Toolchain Doctor")
-    m, err := discoverRequirementsWithProgress(r, os.Stdout)
-    if err != nil { return err }
-    fmt.Fprintln(os.Stdout, "\n02: Check requirements")
-    fmt.Fprintf(os.Stdout, "    Workflows:  %d\n    Actions:    %d\n    Tools:      %d\n",len(m.Workflows),len(m.Actions),len(m.Tools))
-    if err := validateProfile(m); err != nil { return err }
-    fmt.Fprintln(os.Stdout, "    Status:     OK")
-    fmt.Fprintln(os.Stdout, "\n03: Check runner image")
-    fmt.Fprintf(os.Stdout, "    Image:      %s\n",r.Image)
-    if err := r.selectPlatform(); err != nil { return err }
-    if !r.exists("image", r.Image) { return fmt.Errorf("image %s missing; run build --repo %s",r.Image,r.Repo) }
-    fmt.Fprintln(os.Stdout, "    Status:     OK")
-    fmt.Fprintln(os.Stdout, "\n04: Check toolchain")
-    checked,managed:=0,0
-    for _,t:=range m.Tools {
-        if toolManagedByWorkflow(t) {
-            fmt.Fprintln(os.Stdout, toolStatusLine(t.Name,t.Version,"WORKFLOW ACTION"))
-            managed++
-            continue
-        }
-        check,ok:=supportedToolChecks[t.Name]
-        if !ok {return fmt.Errorf("no doctor check defined for %s",t.Name)}
-        switch t.Name{
-        case "python":if t.Version!=""{check+=" && python3 --version 2>&1 | grep -F "+shellSingleQuote(t.Version)}
-        case "java":if t.Version!=""{check+=" && java -version 2>&1 | grep -F "+shellSingleQuote(t.Version)}
-        case "php":if t.Version!=""{check+=" && php -v | grep -F "+shellSingleQuote(t.Version)}
-        case "typst":if t.Version!=""{check+=" && typst --version | grep -F "+shellSingleQuote(t.Version)}
-        case "just":if t.Version!=""{check+=" && just --version | grep -F "+shellSingleQuote(t.Version)}
-        case "node":if t.Version!=""{check+=" && node --version | grep -F "+shellSingleQuote(t.Version)}
-        case "go":if t.Version!=""{check+=" && go version | grep -F "+shellSingleQuote(t.Version)}
-        case "ruby":if t.Version!=""{check+=" && ruby --version | grep -F "+shellSingleQuote(t.Version)}
-        }
-        cmd:=exec.Command("docker","run","--rm","--platform",dockerPlatform,"--entrypoint","bash",r.Image,"-euc",check)
-        output,checkErr:=cmd.CombinedOutput()
-        if checkErr!=nil {
-            fmt.Fprintln(os.Stdout,toolStatusLine(t.Name,t.Version,"FAIL"))
-            detail:=strings.TrimSpace(string(output))
-            if detail!="" {fmt.Fprintf(os.Stderr,"    Detail: %s\n",detail)}
-            return fmt.Errorf("tool %s %s failed image verification: %w",t.Name,t.Version,checkErr)
-        }
-        fmt.Fprintln(os.Stdout,toolStatusLine(t.Name,t.Version,"OK"))
-        checked++
-    }
-    fmt.Fprintf(os.Stdout,"\nRESULT: PASS — %d tools verified in image, %d provided by workflow actions\n",checked,managed)
-    fmt.Fprintf(os.Stdout,"Repository: %s\nImage:      %s\n",r.Repo,r.Image)
-    return nil
+	fmt.Fprintln(os.Stdout, "GitHub Runner — Toolchain Doctor")
+	m, err := discoverRequirementsWithProgress(r, os.Stdout)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stdout, "\n02: Check requirements")
+	fmt.Fprintf(os.Stdout, "    Workflows:  %d\n    Actions:    %d\n    Tools:      %d\n", len(m.Workflows), len(m.Actions), len(m.Tools))
+	if err := validateProfile(m); err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stdout, "    Status:     OK")
+	fmt.Fprintln(os.Stdout, "\n03: Check runner image")
+	fmt.Fprintf(os.Stdout, "    Image:      %s\n", r.Image)
+	if err := r.selectPlatform(); err != nil {
+		return err
+	}
+	if !r.exists("image", r.Image) {
+		return fmt.Errorf("image %s missing; run build --repo %s", r.Image, r.Repo)
+	}
+	fmt.Fprintln(os.Stdout, "    Status:     OK")
+	fmt.Fprintln(os.Stdout, "\n04: Check toolchain")
+	checked, managed := 0, 0
+	for _, t := range m.Tools {
+		if toolManagedByWorkflow(t) {
+			fmt.Fprintln(os.Stdout, toolStatusLine(t.Name, t.Version, "WORKFLOW ACTION"))
+			managed++
+			continue
+		}
+		check, ok := supportedToolChecks[t.Name]
+		if !ok {
+			return fmt.Errorf("no doctor check defined for %s", t.Name)
+		}
+		switch t.Name {
+		case "python":
+			if t.Version != "" {
+				check += " && python3 --version 2>&1 | grep -F " + shellSingleQuote(t.Version)
+			}
+		case "java":
+			if t.Version != "" {
+				check += " && java -version 2>&1 | grep -F " + shellSingleQuote(t.Version)
+			}
+		case "php":
+			if t.Version != "" {
+				check += " && php -v | grep -F " + shellSingleQuote(t.Version)
+			}
+		case "typst":
+			if t.Version != "" {
+				check += " && typst --version | grep -F " + shellSingleQuote(t.Version)
+			}
+		case "just":
+			if t.Version != "" {
+				check += " && just --version | grep -F " + shellSingleQuote(t.Version)
+			}
+		case "node":
+			if t.Version != "" {
+				check += " && node --version | grep -F " + shellSingleQuote(t.Version)
+			}
+		case "go":
+			if t.Version != "" {
+				check += " && go version | grep -F " + shellSingleQuote(t.Version)
+			}
+		case "ruby":
+			if t.Version != "" {
+				check += " && ruby --version | grep -F " + shellSingleQuote(t.Version)
+			}
+		}
+		cmd := exec.Command("docker", "run", "--rm", "--platform", dockerPlatform, "--entrypoint", "bash", r.Image, "-euc", check)
+		output, checkErr := cmd.CombinedOutput()
+		if checkErr != nil {
+			fmt.Fprintln(os.Stdout, toolStatusLine(t.Name, t.Version, "FAIL"))
+			detail := strings.TrimSpace(string(output))
+			if detail != "" {
+				fmt.Fprintf(os.Stderr, "    Detail: %s\n", detail)
+			}
+			return fmt.Errorf("tool %s %s failed image verification: %w", t.Name, t.Version, checkErr)
+		}
+		fmt.Fprintln(os.Stdout, toolStatusLine(t.Name, t.Version, "OK"))
+		checked++
+	}
+	fmt.Fprintf(os.Stdout, "\nRESULT: PASS — %d tools verified in image, %d provided by workflow actions\n", checked, managed)
+	fmt.Fprintf(os.Stdout, "Repository: %s\nImage:      %s\n", r.Repo, r.Image)
+	return nil
 }
 
 func toolStatusLine(name, version, status string) string {
-    if version!="" {name+=" ("+version+")"}
-    return fmt.Sprintf("    - %-24s %s",name+":",status)
+	if version != "" {
+		name += " (" + version + ")"
+	}
+	return fmt.Sprintf("    - %-24s %s", name+":", status)
 }
 
 func shellSingleQuote(value string) string {

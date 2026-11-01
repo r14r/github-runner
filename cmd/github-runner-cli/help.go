@@ -211,7 +211,6 @@ var commandDocs = map[string]commandDoc{
 		Examples:    []string{"ghr runner uninstall-service --repo example-org/demo-app", "ghr uninstall --repo example-org/demo-app --dry-run"},
 		Notes:       []string{"May forcibly stop a running container; verify the runner is idle first.", "For complete removal, prefer top-level uninstall with --dry-run."},
 	},
-
 }
 
 // Alias docs share the exact behavior of their preferred equivalent.

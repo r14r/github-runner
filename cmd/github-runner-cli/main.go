@@ -140,8 +140,8 @@ func run(args []string, executable, cwd string) error {
 			return err
 		}
 		if selectedBackend() != "docker" {
-            return errors.New("Docker backend required (RUNNER_BACKEND=docker)")
-        }
+			return errors.New("Docker backend required (RUNNER_BACKEND=docker)")
+		}
 		return runner.install(allow, name)
 
 	case "start", "stop", "status", "monitor", "refresh":
@@ -200,7 +200,6 @@ func run(args []string, executable, cwd string) error {
 		default:
 			return fmt.Errorf("unknown runner action %q", sub)
 		}
-
 
 	default:
 		return fmt.Errorf("unknown command %q (try --help)", action)

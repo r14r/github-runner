@@ -25,19 +25,25 @@ type dockerRunner struct {
 	Assets    string
 }
 
-func newDockerRunner(repo, assets string) (dockerRunner,error) {
-    slug,err:=repoSlug(repo)
-    if err!=nil{return dockerRunner{},err}
-    profile:=os.Getenv("RUNNER_PROFILE")
-    switch profile{
-    case "","auto","generic":profile="toolchain"
-    case "toolchain","runner-base":
-    default:return dockerRunner{},fmt.Errorf("unsupported RUNNER_PROFILE %q: use toolchain or runner-base",profile)
-    }
-    image:=os.Getenv("RUNNER_IMAGE")
-    if image==""{image="github-actions-runner-local:2.338.1-"+slug}
-    return dockerRunner{Repo:gitHubRepository(repo),Slug:slug,Profile:profile,Image:image,
-        Volume:"github-runner-"+slug+"-state",Container:"github-runner-"+slug,Assets:assets},nil
+func newDockerRunner(repo, assets string) (dockerRunner, error) {
+	slug, err := repoSlug(repo)
+	if err != nil {
+		return dockerRunner{}, err
+	}
+	profile := os.Getenv("RUNNER_PROFILE")
+	switch profile {
+	case "", "auto", "generic":
+		profile = "toolchain"
+	case "toolchain", "runner-base":
+	default:
+		return dockerRunner{}, fmt.Errorf("unsupported RUNNER_PROFILE %q: use toolchain or runner-base", profile)
+	}
+	image := os.Getenv("RUNNER_IMAGE")
+	if image == "" {
+		image = "github-actions-runner-local:2.338.1-" + slug
+	}
+	return dockerRunner{Repo: gitHubRepository(repo), Slug: slug, Profile: profile, Image: image,
+		Volume: "github-runner-" + slug + "-state", Container: "github-runner-" + slug, Assets: assets}, nil
 }
 func (r dockerRunner) docker(args ...string) (string, error) {
 	out, err := commandOutput("", "docker", args...)
@@ -126,19 +132,27 @@ func (r dockerRunner) download() error {
 	if _, err := os.Stat(dockerfile); err != nil {
 		return fmt.Errorf("Dockerfile not installed: %w", err)
 	}
-    args:=[]string{"build","--platform",dockerPlatform,"--target",r.Profile,
-        "--tag",r.Image,"--file",dockerfile}
-    if r.Profile=="toolchain"{
-        m,err:=discoverRequirements(r)
-        if err!=nil{return err}
-        if err=validateProfile(m);err!=nil{return err}
-        buildArgs,err:=toolchainBuildArgs(m)
-        if err!=nil{return err}
-        args=append(args,buildArgs...)
-        fmt.Printf("Preparing image for %s (%d workflows, %d tools)\n",r.Repo,len(m.Workflows),len(m.Tools))
-    }
-    args=append(args,filepath.Join(r.Assets,"runner","docker"))
-    if err:=commandRun("","docker",args...);err!=nil{return err}
+	args := []string{"build", "--platform", dockerPlatform, "--target", r.Profile,
+		"--tag", r.Image, "--file", dockerfile}
+	if r.Profile == "toolchain" {
+		m, err := discoverRequirements(r)
+		if err != nil {
+			return err
+		}
+		if err = validateProfile(m); err != nil {
+			return err
+		}
+		buildArgs, err := toolchainBuildArgs(m)
+		if err != nil {
+			return err
+		}
+		args = append(args, buildArgs...)
+		fmt.Printf("Preparing image for %s (%d workflows, %d tools)\n", r.Repo, len(m.Workflows), len(m.Tools))
+	}
+	args = append(args, filepath.Join(r.Assets, "runner", "docker"))
+	if err := commandRun("", "docker", args...); err != nil {
+		return err
+	}
 	if err := commandRun("", "docker", "volume", "create",
 		"--label", "com.github-runner-cli.repository="+r.Repo, r.Volume); err != nil {
 		return err
