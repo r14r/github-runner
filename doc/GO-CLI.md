@@ -1,4 +1,4 @@
-# Go CLI v0.5.1 — repository-neutral runner manager
+# Go CLI v0.5.2 — repository-neutral runner manager
 
 ## Typical workflow
 
@@ -44,6 +44,26 @@ identity, GitHub API unavailability or a busy registration aborts before
 stopping. An existing privileged Docker socket is preserved only when
 `RUNNER_DOCKER_SOCKET=1` is explicitly set. The GitHub registration
 and persistent Docker volume are never removed by refresh.
+
+## Live runner log monitoring
+
+```sh
+ghr monitor --repo OWNER/REPO
+# Show only logs emitted after attaching (no previous lines):
+RUNNER_MONITOR_TAIL=0 ghr monitor --repo OWNER/REPO
+# Print 30 historical lines once, then stream:
+RUNNER_MONITOR_TAIL=30 ghr monitor --repo OWNER/REPO
+```
+
+The monitor prints a one-time runner status snapshot and five recent Actions
+runs, then starts `docker logs --follow --tail N CONTAINER`. No polling,
+duplicate log dumps or recurring status output. The stream blocks waiting
+for new log lines. Ctrl+C stops the local monitor, not the runner.
+If the container exits, the stream ends. For workflow step-by-step logs use
+`gh run view RUN_ID --repo OWNER/REPO --log`.
+
+`RUNNER_MONITOR_TAIL` accepts integers 0–1000 (default 8).
+The old `RUNNER_MONITOR_SECONDS` polling setting is no longer used.
 
 ## Runner state and compatibility
 
