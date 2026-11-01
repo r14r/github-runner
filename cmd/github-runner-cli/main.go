@@ -37,43 +37,7 @@ func execute(script string, args []string, repo string) error {
 }
 
 func usage() {
-    fmt.Print(`github-runner-cli — GitHub Actions runner manager (Go)
-
-Usage:
-  github-runner-cli version
-  github-runner-cli install --repo OWNER/REPO [--allow-public] [--name NAME]
-  github-runner-cli start --repo OWNER/REPO
-  github-runner-cli stop --repo OWNER/REPO
-  github-runner-cli status --repo OWNER/REPO
-  github-runner-cli monitor --repo OWNER/REPO
-  github-runner-cli refresh --repo OWNER/REPO
-  github-runner-cli list-installed [--repo OWNER/REPO]
-  github-runner-cli uninstall --repo OWNER/REPO [--dry-run] [--delete-data]
-  github-runner-cli uninstall --all [--dry-run] --yes [--delete-data]
-  github-runner-cli self-uninstall --yes
-  github-runner-cli runner docker-doctor
-  github-runner-cli runner <download|register|setup|install-service|start|stop|status|monitor|replace-container> --repo OWNER/REPO [options]
-  github-runner-cli host <install|doctor|start|stop|status|monitor|migrate|repair|cleanup|actions-cancel|actions-delete|actions-clear> [--repo OWNER/REPO] [args]
-
-Flags:
-  --repo, --repository OWNER/REPO  Repository selection (aliases, including = form)
-  --all                           Select all LOCAL managed runner installations
-  --yes                           Required for bulk operations and self-uninstall
-  --delete-data                   Delete persistent runner registration/workspace volume
-  --dry-run                       Preview uninstall actions without making changes
-
-Notes:
-  list-installed without --repo lists local Docker runner containers and volumes.
-  With --repo it also queries GitHub for that repository's runner registrations.
-  uninstall refuses busy runners and never deletes images or other Docker volumes.
-  self-uninstall removes only the installed CLI and its env/github-runner-cli assets.
-
-Environment:
-  RUNNER_BACKEND=docker|macos|auto
-  RUNNER_PROFILE=auto|generic|bookbuilder
-  RUNNER_DOCKER_SOCKET=0|1  (privileged; explicit opt-in only)
-  GITHUB_RUNNER_CLI_ENV=<runtime assets directory>
-`)
+    fmt.Print(globalHelp)
 }
 
 func parseRegisterFlags(args []string) (bool, string, error) {
@@ -92,6 +56,8 @@ func parseRegisterFlags(args []string) (bool, string, error) {
 
 func run(args []string, executable, cwd string) error {
     if len(args) == 0 { usage(); return nil }
+    // Help must be available without --repo, installed scripts, or Docker.
+    if handled, err := maybeShowHelp(args); handled { return err }
     action := strings.ToLower(args[0])
     switch action {
     case "version":

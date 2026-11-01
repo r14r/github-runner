@@ -39,7 +39,11 @@ jobs:
           INSTALL_DIR="$RUNNER_TEMP/bin" just install
           test "$("$RUNNER_TEMP/bin/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
           "$RUNNER_TEMP/bin/github-runner-cli" --help
-          "$RUNNER_TEMP/bin/github-runner-cli" list-installed --help 2>/dev/null || true
+          "$RUNNER_TEMP/bin/github-runner-cli" help | grep -q 'RUNNER COMMANDS:'
+          "$RUNNER_TEMP/bin/github-runner-cli" status --help | grep -q 'ghr status --repo'
+          "$RUNNER_TEMP/bin/github-runner-cli" list-installed --help | grep -q 'EXAMPLES:'
+          "$RUNNER_TEMP/bin/github-runner-cli" help runner setup | grep -q -- '--workflow PATH'
+          "$RUNNER_TEMP/bin/github-runner-cli" host doctor --help | grep -q 'ghr host doctor'
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/runner/docker/Dockerfile"
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/doctor-linux.sh"
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/control.sh"

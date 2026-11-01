@@ -1,8 +1,23 @@
-# Go CLI v0.3.1
+# Go CLI v0.3.2
 
 Main entry point: `cmd/github-runner-cli/main.go`.
 Repository-specific operations: `cmd/github-runner-cli/docker.go`.
 Workflow patcher: `internal/workflow/patch.go`.
+
+## Built-in command help
+
+```sh
+ghr help
+ghr help status
+ghr status --help
+ghr help runner setup
+ghr runner setup --help
+ghr help host doctor
+```
+
+Each help page documents behavior, syntax, parameters, accepted values,
+side-effect/safety notes and complete examples. Help is resolved before
+repository validation and before checking runtime assets.
 
 ## Required CLI flags
 

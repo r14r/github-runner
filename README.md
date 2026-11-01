@@ -1,7 +1,28 @@
 # github-runner-cli
 
 Go CLI to manage self-hosted GitHub Actions runners on Docker/Colima.
-Version: **0.3.1**. The repository is `r14r/github-runner`.
+Version: **0.3.2**. The repository is `r14r/github-runner`.
+
+## Command help
+
+Every command provides detailed help without contacting Docker or GitHub and
+without requiring any repository flags:
+
+```sh
+ghr help                        # Overview of all commands
+ghr help status                 # Purpose, parameters, values, examples
+ghr status --help               # Identical result; works without --repo
+ghr install -h
+ghr help uninstall
+ghr list-installed --help
+ghr runner --help               # Advanced runner subcommands
+ghr runner setup --help
+ghr help host monitor
+```
+
+`ghr` is an optional shell alias for `github-runner-cli`. All examples
+also work with the full executable name. Help is available even if CLI
+runtime scripts have not been installed.
 
 ## Build and install
 
