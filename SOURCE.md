@@ -1,7 +1,11 @@
-# SOURCE.md
+# Source of truth
 
-Canonical GitHub repository: https://github.com/r14r/github-runner
+The canonical source of this runner-manager application is
+`https://github.com/r14r/github-runner`, branch `main`.
+Changes are developed in feature branches and merged through reviewed
+pull requests with successful CI.
 
-Source-of-truth `main`; changes originate in feature branches and pull requests. The initial profile was extracted from `r14r/BookBuilder-with-typst` PR #11. This repository owns runner host provisioning, registration lifecycle and operator scripts. The application repository retains its workflow YAML files and uses a pinned checkout of this repository for host preflight.
-
-Root `VERSION` is the sole release version source. No cloud runner credentials are stored in Git.
+This project owns only generic Docker-backed GitHub Actions runner
+provisioning, registration, lifecycle and workflow-requirement analysis.
+The actual workflows and their configuration remain in each target repository.
+No target repository is hardcoded, referenced or required by this codebase.
