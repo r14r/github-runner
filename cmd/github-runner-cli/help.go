@@ -68,7 +68,7 @@ var commandDocs = map[string]commandDoc{
 		Usage:       []string{"ghr install --repo OWNER/REPO [--allow-public] [--name NAME]"},
 		Options:     []string{repositoryFlagHelp, "--allow-public          Explicitly acknowledge running a trusted workflow from a PUBLIC repository.", "--name NAME             Optional runner registration name; ASCII letters/digits/underscore/dot/hyphen.", "-h, --help             Show this page."},
 		Values:      []string{"--repo: OWNER/REPO, e.g. example-org/demo-app.", "RUNNER_BACKEND: docker or auto (Colima on Monterey).", "RUNNER_PROFILE: auto (default), generic, toolchain, runner-base.", "RUNNER_DOCKER_SOCKET: 0 (default) or 1 (privileged opt-in)."},
-		Examples:    []string{"ghr install --repo example-org/another-app", "ghr install --repository example-org/demo-app --allow-public", "ghr install --repo example-org/demo-app --allow-public --name imac-bookbuilder", "ghr start --repo example-org/demo-app"},
+		Examples:    []string{"ghr install --repo example-org/another-app", "ghr install --repository example-org/demo-app --allow-public", "ghr install --repo example-org/demo-app --allow-public --name demo-runner", "ghr start --repo example-org/demo-app"},
 		Notes:       []string{"A public repository requires --allow-public.", "An already configured registration volume is preserved.", "Stop active workflows before replacing any existing container."},
 	},
 	"start": {
