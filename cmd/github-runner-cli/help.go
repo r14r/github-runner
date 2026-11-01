@@ -35,6 +35,33 @@ var commandDocs = map[string]commandDoc{
 		Options:     []string{"-h, --help             Show this page."},
 		Examples:    []string{"ghr version"},
 	},
+	"requirements": {
+		Summary:     "Analyze repository workflows and report required toolchains.",
+		Description: "Performs a read-only sparse checkout of GitHub Actions workflow files. Detects uses actions, versions from recognized setup actions, and supported run commands. Does not execute repository workflows.",
+		Usage:       []string{"ghr requirements --repo OWNER/REPO [--output PATH]"},
+		Options:     []string{repositoryFlagHelp, "--output PATH           Write the toolchain manifest as YAML (otherwise print to stdout).", "-h, --help             Show this page."},
+		Values:      []string{"--repo: GitHub OWNER/REPO.", "--output: local YAML file path, e.g. toolchain.yaml."},
+		Examples:    []string{"ghr requirements --repo r14r/BookBuilder", "ghr requirements --repo r14r/BookBuilder --output toolchain.yaml"},
+		Notes:       []string{"Unknown or dynamic requirements are reported, not silently installed.", "BookBuilder's pinned profile tools are shown with their source."},
+	},
+	"build": {
+		Summary:     "Prepare the runner Docker image according to the analyzed workflow requirements.",
+		Description: "Inspects the repository workflows, validates the selected image profile against detectable requirements, builds it, and verifies the resulting toolchain. A recognized profile is required; arbitrary dependencies are not auto-installed.",
+		Usage:       []string{"ghr build --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Values:      []string{"RUNNER_BACKEND: auto, docker.", "RUNNER_PROFILE: auto, generic, runner-base, bookbuilder."},
+		Examples:    []string{"ghr requirements --repo r14r/BookBuilder --output toolchain.yaml", "ghr build --repo r14r/BookBuilder", "ghr doctor --repo r14r/BookBuilder"},
+		Notes:       []string{"The build prepares an image and registration volume but does not register/start a GitHub runner.", "Unrecognized required tools fail closed; extend the Dockerfile/profile first."},
+	},
+	"doctor": {
+		Summary:     "Verify the prepared Docker image satisfies workflow requirements.",
+		Description: "Rechecks current workflow requirements, locates the local Docker image, and verifies the supported tools and pinned versions. No GitHub registration or running runner is needed.",
+		Usage:       []string{"ghr doctor --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Values:      []string{"RUNNER_PROFILE: auto, generic, runner-base, bookbuilder.", "RUNNER_IMAGE: optional Docker image override."},
+		Examples:    []string{"ghr build --repo r14r/BookBuilder", "ghr doctor --repo r14r/BookBuilder", "ghr start --repo r14r/BookBuilder"},
+		Notes:       []string{"Doctor does not install missing tools.", "It checks the prepared image; start still requires a registered runner."},
+	},
 	"install": {
 		Summary:     "Build the runner image, register a repository runner and create its Docker container.",
 		Description: "Runs the Docker preflight, builds the generic or BookBuilder image, checks the BookBuilder toolchain when applicable, creates the persistent volume, registers only if needed, then creates a stopped runner container. Does not change workflows or start jobs.",
@@ -338,6 +365,9 @@ USAGE:
   ghr <command> [options]
 
 RUNNER COMMANDS:
+  requirements        Analyze workflow actions and toolchain requirements
+  build               Prepare and verify a Docker runner image
+  doctor              Verify image toolchain against workflow requirements
   install             Build, register and create a repository runner container
   start               Start a registered runner
   stop                Stop a runner (check busy state before stopping)
@@ -370,7 +400,9 @@ GLOBAL ENVIRONMENT:
   GITHUB_RUNNER_CLI_ENV     Override installed runtime assets directory
 
 GETTING STARTED:
-  ghr runner docker-doctor
+  ghr requirements --repo r14r/BookBuilder --output toolchain.yaml
+  ghr build --repo r14r/BookBuilder
+  ghr doctor --repo r14r/BookBuilder
   ghr install --repo r14r/BookBuilder --allow-public
   ghr start --repo r14r/BookBuilder
   ghr status --repo r14r/BookBuilder

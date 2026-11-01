@@ -1,7 +1,7 @@
 # github-runner-cli
 
 Go CLI to manage self-hosted GitHub Actions runners on Docker/Colima.
-Version: **0.3.2**. The repository is `r14r/github-runner`.
+Version: **0.4.0**. The repository is `r14r/github-runner`.
 
 ## Command help
 
@@ -38,6 +38,44 @@ INSTALL_DIR="$HOME/.local/bin" just install
 
 `just install` installs the binary and runtime assets only; it does not
 register or stop any runner.
+
+## Workflow requirements and Docker toolchain
+
+Analyze all workflow files without executing project code:
+
+```sh
+github-runner-cli requirements --repo r14r/BookBuilder
+github-runner-cli requirements --repo r14r/BookBuilder --output toolchain.yaml
+github-runner-cli build --repo r14r/BookBuilder
+github-runner-cli doctor --repo r14r/BookBuilder
+```
+
+The YAML manifest lists the repository revision, workflow files, `uses:`
+actions, detected tool versions, selected runner image profile, and warnings.
+Tools pinned by the BookBuilder runner profile are listed with that provenance.
+This static Go analyzer does **not** execute workflow code or infer every
+possible shell dependency. Unknown/dynamic requirements are identified rather
+than silently guessed.
+
+`build` verifies detected requirements against an existing known image
+profile (`runner-base` or `bookbuilder`) and builds/verifies the image;
+this is not an arbitrary tool/package installer. Official setup actions
+such as `ruby/setup-ruby` can install runtimes when a job executes.
+
+**On a new runner, registration is still required before starting:**
+
+```sh
+github-runner-cli runner register --repo r14r/BookBuilder --allow-public
+github-runner-cli start --repo r14r/BookBuilder
+```
+
+For an already registered runner, `start` suffices. `requirements`,
+`build` and `doctor` do not register or start a runner.
+
+## CI and formatting
+
+`just ci` now calls `fmt-check`, not `fmt`, and does not modify tracked
+Go source files. Run `just fmt` explicitly when formatting is desired.
 
 ## Setup, start and monitor one repository
 

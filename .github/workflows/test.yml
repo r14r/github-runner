@@ -17,7 +17,6 @@ jobs:
           go-version-file: go.mod
       - name: Go formatting
         run: |
-          gofmt -w ./cmd ./internal
           test -z "$(gofmt -l ./cmd ./internal)"
       - name: Go vet
         run: go vet ./...
@@ -35,12 +34,17 @@ jobs:
         run: |
           just bootstrap
           just ci
+          test -z "$(git status --porcelain -- cmd internal)"
           just build
+          test -z "$(git status --porcelain -- cmd internal)"
           INSTALL_DIR="$RUNNER_TEMP/bin" just install
           test "$("$RUNNER_TEMP/bin/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
           "$RUNNER_TEMP/bin/github-runner-cli" --help
           "$RUNNER_TEMP/bin/github-runner-cli" help | grep -q 'RUNNER COMMANDS:'
           "$RUNNER_TEMP/bin/github-runner-cli" status --help | grep -q 'ghr status --repo'
+          "$RUNNER_TEMP/bin/github-runner-cli" requirements --help | grep -q -- '--output PATH'
+          "$RUNNER_TEMP/bin/github-runner-cli" build --help | grep -q 'ghr build --repo'
+          "$RUNNER_TEMP/bin/github-runner-cli" doctor --help | grep -q 'ghr doctor --repo'
           "$RUNNER_TEMP/bin/github-runner-cli" list-installed --help | grep -q 'EXAMPLES:'
           "$RUNNER_TEMP/bin/github-runner-cli" help runner setup | grep -q -- '--workflow PATH'
           "$RUNNER_TEMP/bin/github-runner-cli" host doctor --help | grep -q 'ghr host doctor'
@@ -48,6 +52,15 @@ jobs:
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/doctor-linux.sh"
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/control.sh"
           test ! -e "$RUNNER_TEMP/bin/env/github-runner-cli/doctor-linux.sh"
+      - name: Analyze current repository workflows without execution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          "$RUNNER_TEMP/bin/github-runner-cli" requirements \
+            --repo r14r/github-runner --output "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq 'repository: "r14r/github-runner"' "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq 'name: "go"' "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq '"actions/setup-go@v5"' "$RUNNER_TEMP/toolchain.yaml"
 
   bookbuilder-image:
     runs-on: ubuntu-24.04

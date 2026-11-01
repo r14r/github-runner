@@ -31,7 +31,7 @@ test:
     go test -count=1 ./...
 
 # Go-only unit and integration tests.
-ci: bootstrap fmt lint test
+ci: bootstrap fmt-check lint test
     go test -race ./...
 
 build: ci
@@ -97,19 +97,19 @@ repair:
     go run ./cmd/github-runner-cli host repair
 
 start:
-    @echo 'Use: github-runner-cli start OWNER/REPO' >&2
+    @echo 'Use: github-runner-cli start --repo OWNER/REPO' >&2
     @exit 2
 
 stop:
-    @echo 'Use: github-runner-cli stop OWNER/REPO' >&2
+    @echo 'Use: github-runner-cli stop --repo OWNER/REPO' >&2
     @exit 2
 
 status:
-    @echo 'Use: github-runner-cli status OWNER/REPO' >&2
+    @echo 'Use: github-runner-cli status --repo OWNER/REPO' >&2
     @exit 2
 
 monitor:
-    @echo 'Use: github-runner-cli monitor OWNER/REPO' >&2
+    @echo 'Use: github-runner-cli monitor --repo OWNER/REPO' >&2
     @exit 2
 
 clean:

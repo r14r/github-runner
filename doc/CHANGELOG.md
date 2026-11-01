@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0 — Workflow requirements and non-mutating CI
+
+- Add `requirements --repo OWNER/REPO` to analyze workflow actions and pinned
+  languages/tools without executing workflow code.
+- Add `requirements --repo OWNER/REPO --output toolchain.yaml` to export a
+  versioned YAML manifest with revision, source and warnings.
+- Add `build --repo OWNER/REPO` to verify profile compatibility and prepare
+  the Docker image; unsupported toolchains require explicit support.
+- Add `doctor --repo OWNER/REPO` to check the image toolchain without
+  registering, starting or stopping a runner.
+- Preserve `start --repo OWNER/REPO` and explicit GitHub registration.
+- `just ci` and GitHub Actions now use read-only Go format checks;
+  `just fmt` remains an explicit opt-in, with sources normalized.
+- Add unit tests for manifests, toolchain versions and unsupported actions.
+
 ## 0.3.2 — Detailed built-in command help
 
 - Add `ghr help`, `ghr help COMMAND`, `ghr help runner SUBCOMMAND`,
