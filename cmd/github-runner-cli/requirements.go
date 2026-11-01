@@ -29,7 +29,7 @@ type toolchainManifest struct {
 }
 
 var workflowJob = regexp.MustCompile(`^  [A-Za-z0-9_.-]+:\s*(?:#.*)?$`)
-var jobStepUses = regexp.MustCompile(`^\s+- uses:\s*([^\s#]+)`)
+var jobStepUses = regexp.MustCompile(`^\s+(?:-\s*)?uses:\s*([^\s#]+)`)
 var stepWith = regexp.MustCompile(`^\s+with:\s*$`)
 var fieldKey = regexp.MustCompile(`^\s+([A-Za-z][A-Za-z0-9_-]+):\s*(.*?)\s*$`)
 var usesTool = map[string]string{
