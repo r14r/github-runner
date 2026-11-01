@@ -38,49 +38,44 @@ WORKDIR /runner
 ENTRYPOINT ["/usr/local/bin/runner-entrypoint"]
 CMD ["run"]
 
-# BookBuilder requires pinned tools beyond the minimal, reusable runner base.
-# The PHP 8.2 packages come from the signed ondrej/php Ubuntu PPA; Noble defaults
-# to PHP 8.3. Do not change the generic runner's dependency set.
-FROM runner-base AS bookbuilder
+# Optional, repository-neutral toolchain. All package names are chosen from
+# an allowlist in the Go requirements planner; workflows are never executed.
+FROM runner-base AS toolchain
+ARG EXTRA_APT_PACKAGES=""
+ARG INSTALL_JUST=0
+ARG INSTALL_TYPST=0
 
+# No third-party Ubuntu PPAs. Packages are only installed when needed.
+RUN if [ -n "$EXTRA_APT_PACKAGES" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends $EXTRA_APT_PACKAGES \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Supported pinned standalone tools are independent of any target repository.
 ARG JUST_VERSION=1.58.0
 ARG JUST_SHA256=4a5cc2f53e6f0f8c59092a6cc38291eb729d46a7dd95d3ae582008881b84931d
+RUN if [ "$INSTALL_JUST" = "1" ]; then \
+      curl -fsSL --retry 3 \
+      "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+      -o /tmp/just.tar.gz \
+      && printf '%s  %s\n' "$JUST_SHA256" /tmp/just.tar.gz | sha256sum -c - \
+      && mkdir -p /tmp/just-unpack \
+      && tar -xzf /tmp/just.tar.gz -C /tmp/just-unpack \
+      && install -m 0755 "$(find /tmp/just-unpack -type f -name just -print -quit)" /usr/local/bin/just \
+      && rm -rf /tmp/just.tar.gz /tmp/just-unpack; \
+    fi
+
 ARG TYPST_VERSION=0.15.1
 ARG TYPST_SHA256=a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       software-properties-common ffmpeg fontconfig fonts-dejavu-core \
-       fonts-liberation fonts-noto-core openjdk-21-jre-headless xz-utils \
-    && add-apt-repository --yes ppa:ondrej/php \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-       php8.2-cli php8.2-curl php8.2-mbstring php8.2-zip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Official GitHub release archives: versions and SHA-256 digests are pinned.
-RUN curl -fsSL --retry 3 \
-       "https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
-       -o /tmp/just.tar.gz \
-    && printf '%s  %s\n' "$JUST_SHA256" /tmp/just.tar.gz | sha256sum -c - \
-    && mkdir -p /tmp/just-unpack \
-    && tar -xzf /tmp/just.tar.gz -C /tmp/just-unpack \
-    && install -m 0755 "$(find /tmp/just-unpack -type f -name just -print -quit)" /usr/local/bin/just \
-    && rm -rf /tmp/just.tar.gz /tmp/just-unpack
-
-RUN curl -fsSL --retry 3 \
-       "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" \
-       -o /tmp/typst.tar.xz \
-    && printf '%s  %s\n' "$TYPST_SHA256" /tmp/typst.tar.xz | sha256sum -c - \
-    && mkdir -p /tmp/typst-unpack \
-    && tar -xJf /tmp/typst.tar.xz -C /tmp/typst-unpack \
-    && install -m 0755 "$(find /tmp/typst-unpack -type f -name typst -print -quit)" /usr/local/bin/typst \
-    && rm -rf /tmp/typst.tar.xz /tmp/typst-unpack
-
-# Fail the image build if BookBuilder's pinned host requirements are not met.
-RUN command -v just && command -v ffmpeg && command -v fc-list \
-    && test "$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')" = "8.2" \
-    && php -r 'foreach (["curl","zip","mbstring"] as $extension) { if (!extension_loaded($extension)) exit(1); }' \
-    && java -version 2>&1 | grep -Eq 'version "21[.]|openjdk 21[.]' \
-    && typst --version | grep -Eq '^typst 0[.]15[.]1([[:space:]]|$)' \
-    && just --version
+RUN if [ "$INSTALL_TYPST" = "1" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends xz-utils \
+      && rm -rf /var/lib/apt/lists/* \
+      && curl -fsSL --retry 3 \
+      "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" \
+      -o /tmp/typst.tar.xz \
+      && printf '%s  %s\n' "$TYPST_SHA256" /tmp/typst.tar.xz | sha256sum -c - \
+      && mkdir -p /tmp/typst-unpack \
+      && tar -xJf /tmp/typst.tar.xz -C /tmp/typst-unpack \
+      && install -m 0755 "$(find /tmp/typst-unpack -type f -name typst -print -quit)" /usr/local/bin/typst \
+      && rm -rf /tmp/typst.tar.xz /tmp/typst-unpack; \
+    fi
