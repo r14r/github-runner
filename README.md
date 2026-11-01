@@ -5,7 +5,7 @@ repository-scoped, Docker/Colima-backed GitHub Actions runners without
 application-specific profiles, hardcoded repository names or workflow
 dependencies on the manager repository.
 
-Current version: **0.5.1**.
+Current version: **0.5.2**.
 
 ## Install
 
@@ -62,6 +62,8 @@ ghr runner register --repo OWNER/REPO [--allow-public]
 ghr start --repo OWNER/REPO
 ghr status --repo OWNER/REPO
 ghr monitor --repo OWNER/REPO
+# Only log lines emitted after connection:
+RUNNER_MONITOR_TAIL=0 ghr monitor --repo OWNER/REPO
 ghr stop --repo OWNER/REPO
 ```
 
@@ -77,6 +79,12 @@ ghr uninstall --all --dry-run
 ghr uninstall --all --yes [--delete-data]
 ghr self-uninstall --yes
 ```
+
+Monitor behavior: `ghr monitor` prints status and recent GitHub runs once,
+then shows an initial tail of 8 container log lines and **streams new lines
+as they arrive**, without repeatedly dumping prior logs. To see only new
+lines, set `RUNNER_MONITOR_TAIL=0`. Ctrl+C exits monitoring without stopping
+the runner. Detailed job-step logs remain available via `gh run view`.
 
 Each registration uses dedicated Docker container/volume names derived from
 the supplied `OWNER/REPO` slug. A persistent volume survives normal image
