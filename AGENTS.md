@@ -1,17 +1,18 @@
-# AGENTS.md — github-runner-cli
+# Agent guidelines
 
-- Canonical repository: https://github.com/r14r/github-runner
-- Single version source: root `VERSION`. Go builds inject this version through ldflags.
-- Go module: `github.com/r14r/github-runner`.
-- Required recipes: `just bootstrap`, `just ci`, `just build`, `just install`.
-- Do not reintroduce Python scripts, pytest, pip, or Python CI dependencies.
-- Active Docker lifecycle logic and workflow rewriting must stay in Go.
-- Docker entrypoint and legacy macOS/Ubuntu host compatibility assets may
-  remain shell scripts until separately migrated and tested on real hosts.
-- No changes may erase Docker volumes or existing runner registrations.
-- Never re-register an existing online/busy runner automatically.
-- Docker socket is privileged and opt-in; public repositories require
-  `--allow-public`.
-- Do not assert host validation that was not executed; CI builds and tests
-  the BookBuilder Docker image on GitHub-hosted Ubuntu.
-- Follow feature branch → PR → tests → merge.
+- Canonical repository: `r14r/github-runner` (the runner manager itself).
+- The Go module is `github.com/r14r/github-runner`.
+- Every target repository must be supplied explicitly with `--repo OWNER/REPO`
+  or `--repository OWNER/REPO`. Never add a default target repository.
+- Do **not** introduce a named application or target repository into source,
+  manifests, tests, workflow jobs or examples. Use synthetic
+  `example-org/demo-app` fixtures only.
+- Provision tooling using recognized workflow actions and auditable allowlists;
+  never execute third-party workflow code during analysis.
+- The runner's registration and workspace volume must survive rebuilds.
+  No automatic removal or re-registration; uninstall checks busy state.
+- No arbitrary package names or untrusted YAML content in Docker build args.
+- `just ci` must not mutate Go source; `just fmt` is explicit.
+- Run `just bootstrap`, `just ci`, `just build` and verify generic image CI.
+- GitHub public self-hosted runners and Docker socket mounts are security-sensitive;
+  both require explicit operator opt-in.
