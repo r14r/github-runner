@@ -108,6 +108,14 @@ func TestMonitorInvalidTailDoesNotCallDockerOrGitHub(t *testing.T) {
 	}
 }
 
+func TestMonitorInvalidTailFailsBeforeDockerPreflight(t *testing.T) {
+	t.Setenv("RUNNER_MONITOR_TAIL", "invalid")
+	r := dockerRunner{Repo: "example-org/demo-app", Container: "nonexistent"}
+	if err := r.action("monitor"); err == nil || !strings.Contains(err.Error(), "RUNNER_MONITOR_TAIL") {
+		t.Fatalf("expected monitor configuration error before Docker preflight: %v", err)
+	}
+}
+
 func TestMonitorStatusErrorsWarnButStreamingContinues(t *testing.T) {
 	var output bytes.Buffer
 	joined := []string{}
