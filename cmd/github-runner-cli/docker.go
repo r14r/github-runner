@@ -25,34 +25,19 @@ type dockerRunner struct {
 	Assets    string
 }
 
-func newDockerRunner(repo, assets string) (dockerRunner, error) {
-	slug, err := repoSlug(repo)
-	if err != nil {
-		return dockerRunner{}, err
-	}
-	profile := os.Getenv("RUNNER_PROFILE")
-    switch profile {
-    case "", "auto", "generic":
-        profile = "toolchain"
-    case "toolchain", "runner-base":
-    default:
-        return dockerRunner{}, fmt.Errorf("unsupported RUNNER_PROFILE %q: use toolchain or runner-base",profile)
+func newDockerRunner(repo, assets string) (dockerRunner,error) {
+    slug,err:=repoSlug(repo)
+    if err!=nil{return dockerRunner{},err}
+    profile:=os.Getenv("RUNNER_PROFILE")
+    switch profile{
+    case "","auto","generic":profile="toolchain"
+    case "toolchain","runner-base":
+    default:return dockerRunner{},fmt.Errorf("unsupported RUNNER_PROFILE %q: use toolchain or runner-base",profile)
     }
-    image := os.Getenv("RUNNER_IMAGE")
-    if image=="" { image="github-actions-runner-local:2.338.1-"+slug }
-	return dockerRunner{}, fmt.Errorf("invalid RUNNER_PROFILE: %s", profile)
-	}
-	image := os.Getenv("RUNNER_IMAGE")
-	if image == "" {
-		image = "github-actions-runner-local:2.338.1"
-		if profile == "bookbuilder" {
-			image += "-bookbuilder"
-		}
-	}
-	return dockerRunner{
-		Repo: gitHubRepository(repo), Slug: slug, Profile: profile, Image: image,
-		Volume: "github-runner-" + slug + "-state", Container: "github-runner-" + slug, Assets: assets,
-	}, nil
+    image:=os.Getenv("RUNNER_IMAGE")
+    if image==""{image="github-actions-runner-local:2.338.1-"+slug}
+    return dockerRunner{Repo:gitHubRepository(repo),Slug:slug,Profile:profile,Image:image,
+        Volume:"github-runner-"+slug+"-state",Container:"github-runner-"+slug,Assets:assets},nil
 }
 func (r dockerRunner) docker(args ...string) (string, error) {
 	out, err := commandOutput("", "docker", args...)
@@ -71,7 +56,7 @@ func (r dockerRunner) stateConfigured() bool {
 }
 func (r dockerRunner) selectPlatform() error {
 	if selectedBackend() != "docker" {
-		return errors.New("native macOS backend still uses the explicitly retained legacy host tools")
+		return errors.New("Docker backend required (set RUNNER_BACKEND=docker)")
 	}
 	if err := exec.Command("docker", "info").Run(); err != nil {
 		return errors.New("Docker daemon unavailable (start Colima and select docker context colima)")
