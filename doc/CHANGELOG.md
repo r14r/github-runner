@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.2 — Detailed built-in command help
+
+- Add `ghr help`, `ghr help COMMAND`, `ghr help runner SUBCOMMAND`,
+  `ghr help host SUBCOMMAND` and `--help` / `-h` at every command level.
+- Document purpose, required/optional parameters, permitted values, examples,
+  environment overrides and safety warnings for each implemented command.
+- Process help requests before `--repo` validation and runtime asset checks,
+  allowing `ghr status --help` without installing/configuring a runner.
+- Add Go regression tests for all help topics, aliases, no-assets behavior,
+  and unknown commands.
+
 ## 0.3.0 — Native Go Docker lifecycle and workflow migration (2026-10-31)
 
 - Remove all Python project files and pytest dependency from CI and install.
