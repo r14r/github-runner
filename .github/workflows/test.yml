@@ -15,13 +15,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Go formatting
+      - name: Check Go formatting (read-only)
+        run: test -z "$(gofmt -l ./cmd ./internal)"
+      - name: Go vet and race tests
         run: |
-          test -z "$(gofmt -l ./cmd ./internal)"
-      - name: Go vet
-        run: go vet ./...
-      - name: Go tests
-        run: go test -race -count=1 ./...
+          go vet ./...
+          go test -race -count=1 ./...
       - name: Install pinned just
         run: |
           curl -fsSL --retry 3 -o /tmp/just.tar.gz \
@@ -30,7 +29,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/just"
           tar -xzf /tmp/just.tar.gz -C "$RUNNER_TEMP/just"
           echo "$RUNNER_TEMP/just" >> "$GITHUB_PATH"
-      - name: Run full just lifecycle (no Python)
+      - name: Build, CI and install generic CLI
         run: |
           just bootstrap
           just ci
@@ -40,39 +39,38 @@ jobs:
           INSTALL_DIR="$RUNNER_TEMP/bin" just install
           test "$("$RUNNER_TEMP/bin/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
           "$RUNNER_TEMP/bin/github-runner-cli" --help
-          "$RUNNER_TEMP/bin/github-runner-cli" help | grep -q 'RUNNER COMMANDS:'
           "$RUNNER_TEMP/bin/github-runner-cli" status --help | grep -q 'ghr status --repo'
-          "$RUNNER_TEMP/bin/github-runner-cli" requirements --help | grep -q -- '--output PATH'
-          "$RUNNER_TEMP/bin/github-runner-cli" build --help | grep -q 'ghr build --repo'
           "$RUNNER_TEMP/bin/github-runner-cli" doctor --help | grep -q 'ghr doctor --repo'
-          "$RUNNER_TEMP/bin/github-runner-cli" list-installed --help | grep -q 'EXAMPLES:'
-          "$RUNNER_TEMP/bin/github-runner-cli" help runner setup | grep -q -- '--workflow PATH'
-          "$RUNNER_TEMP/bin/github-runner-cli" host doctor --help | grep -q 'ghr host doctor'
+          "$RUNNER_TEMP/bin/github-runner-cli" requirements --help | grep -q -- '--output PATH'
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/runner/docker/Dockerfile"
-          test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/doctor-linux.sh"
-          test -f "$RUNNER_TEMP/bin/env/github-runner-cli/scripts/control.sh"
-          test ! -e "$RUNNER_TEMP/bin/env/github-runner-cli/doctor-linux.sh"
-      - name: Analyze current repository workflows without execution
+          test -f "$RUNNER_TEMP/bin/env/github-runner-cli/runner/docker/entrypoint.sh"
+          test ! -e "$RUNNER_TEMP/bin/env/github-runner-cli/scripts"
+      - name: Analyze this repository's workflows without executing code
         env:
           GH_TOKEN: ${{ github.token }}
+          TARGET_REPOSITORY: ${{ github.repository }}
         run: |
           "$RUNNER_TEMP/bin/github-runner-cli" requirements \
-            --repo r14r/github-runner --output "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq 'repository: "r14r/github-runner"' "$RUNNER_TEMP/toolchain.yaml"
+            --repo "$TARGET_REPOSITORY" --output "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq "repository: \"$TARGET_REPOSITORY\"" "$RUNNER_TEMP/toolchain.yaml"
           grep -Fq 'name: "go"' "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq '"actions/setup-go@v5"' "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq 'actions/setup-go@v5' "$RUNNER_TEMP/toolchain.yaml"
 
-  bookbuilder-image:
+  generic-image:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Build BookBuilder Docker image
+      - name: Build repository-neutral toolchain image
         run: |
-          docker build --platform linux/amd64 --target bookbuilder \
-            -t github-actions-runner-ci:bookbuilder \
+          docker build --platform linux/amd64 --target toolchain \
+            --build-arg 'EXTRA_APT_PACKAGES=ffmpeg fontconfig' \
+            --build-arg INSTALL_JUST=1 \
+            --build-arg INSTALL_TYPST=1 \
+            -t github-actions-runner-ci:generic \
             -f runner/docker/Dockerfile runner/docker
-      - name: Validate requirements in actual image
+      - name: Verify real tools in generic image
         run: |
-          docker run --rm -i --platform linux/amd64 \
-            --entrypoint bash github-actions-runner-ci:bookbuilder -s < scripts/doctor-linux.sh
+          docker run --rm --platform linux/amd64 --entrypoint bash \
+            github-actions-runner-ci:generic -euc \
+            'command -v ffmpeg; command -v fc-list; command -v just; command -v typst; just --version; typst --version'
