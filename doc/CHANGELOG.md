@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1 — Safe automatic runner refresh
+
+- `ghr refresh --repo OWNER/REPO` now stops, replaces and restarts an already-running **idle** runner automatically.
+- Validates persisted GitHub runner identity and GitHub `busy` state before stopping; errors or active jobs abort with no runner interruption.
+- Previously stopped runners remain stopped. Existing registration volumes are preserved.
+- Preflights Docker-socket privileges before stopping; retains explicit `RUNNER_DOCKER_SOCKET=1` opt-in.
+- Adds recovery attempt if old-container removal fails, and regression tests for all lifecycle states and failure cases.
+
 ## 0.5.0 — Repository-neutral toolchain and readable diagnostics
 
 - Remove hardcoded external target repositories from CLI, test fixtures,
