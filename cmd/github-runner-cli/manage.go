@@ -144,7 +144,7 @@ func readRunnerIdentity(l localRunner) (runnerIdentity, error) {
 		}
 		images = append(images, candidate)
 	}
-	images = append(images, "github-actions-runner-local:2.338.1-bookbuilder", "github-actions-runner-local:2.338.1")
+	images = append(images, "github-actions-runner-local:2.338.1-"+l.Slug, "github-actions-runner-local:2.338.1")
 	if override := os.Getenv("RUNNER_IMAGE"); override != "" {
 		images = append([]string{override}, images...)
 	}
