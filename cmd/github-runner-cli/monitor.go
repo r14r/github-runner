@@ -48,6 +48,10 @@ func monitorStream(out io.Writer, value string, rt monitorRuntime) error {
 	return rt.follow(tail)
 }
 
+func dockerMonitorLogArgs(container string, tail int) []string {
+	return []string{"logs", "--follow", "--tail", strconv.Itoa(tail), container}
+}
+
 func (r dockerRunner) monitor() error {
 	if !r.exists("container", r.Container) {
 		return fmt.Errorf("runner container %s is missing; install and start it first", r.Container)
@@ -60,7 +64,7 @@ func (r dockerRunner) monitor() error {
 			return commandRun("", "gh", "run", "list", "--repo", r.Repo, "--limit", "5")
 		},
 		follow: func(tail int) error {
-			return commandRun("", "docker", "logs", "--follow", "--tail", strconv.Itoa(tail), r.Container)
+			return commandRun("", "docker", dockerMonitorLogArgs(r.Container, tail)...)
 		},
 	})
 }
