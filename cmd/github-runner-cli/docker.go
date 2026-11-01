@@ -267,33 +267,20 @@ func (r dockerRunner) refresh() error {
 		return err
 	}
 	if !r.exists("image", r.Image) {
-		return fmt.Errorf("image %s missing", r.Image)
+		return fmt.Errorf("image %s missing; run build --repo %s first", r.Image, r.Repo)
 	}
-	if r.exists("container", r.Container) {
-		running, err := r.docker("container", "inspect", "--format", "{{.State.Running}}", r.Container)
-		if err != nil {
-			return err
-		}
-		if running == "true" {
-			return errors.New("runner still running; check GitHub busy status and stop it before refresh")
-		}
-		mounts, err := r.docker("container", "inspect", "--format", `{{range .Mounts}}{{if eq .Destination "/var/run/docker.sock"}}yes{{end}}{{end}}`, r.Container)
-		if err != nil {
-			return err
-		}
-		if mounts == "yes" && os.Getenv("RUNNER_DOCKER_SOCKET") != "1" {
-			return errors.New("runner has Docker socket mount; set RUNNER_DOCKER_SOCKET=1 explicitly to preserve its privileges")
-		}
-		if err := commandRun("", "docker", "rm", r.Container); err != nil {
-			return err
-		}
-	}
-	if err := r.createContainer(); err != nil {
-		return err
-	}
-	fmt.Printf("Container refreshed; persistent volume %s preserved\n", r.Volume)
-	return nil
+	return r.refreshWithRuntime(refreshRuntime{
+		exists: r.exists,
+		inspect: func(format string) (string, error) {
+			return r.docker("container", "inspect", "--format", format, r.Container)
+		},
+		local: func() (localRunner, error) { return inspectLocal(r.Slug) },
+		remote: func() ([]runnerRecord, error) { return githubRunners(r.Repo) },
+		docker: func(args ...string) error { return commandRun("", "docker", args...) },
+		create: r.createContainer,
+	})
 }
+
 func (r dockerRunner) action(action string) error {
 	if err := r.selectPlatform(); err != nil {
 		return err
