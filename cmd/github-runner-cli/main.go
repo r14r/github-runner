@@ -181,18 +181,6 @@ func run(args []string, executable, cwd string) error {
 			return err
 		}
 		switch sub {
-			case "download":
-				file = "01-download.sh"
-			case "register", "configure":
-				file = "02-configure.sh"
-			case "install-service":
-				rest = append([]string{"install"}, rest...)
-			case "uninstall-service":
-				rest = append([]string{"uninstall"}, rest...)
-			}
-			return execute(filepath.Join(env, "runner", file), append([]string{repo}, rest...), "")
-		}
-		switch sub {
 		case "download":
 			if err := noExtras(sub, rest); err != nil {
 				return err
