@@ -281,6 +281,11 @@ func (r dockerRunner) refresh() error {
 }
 
 func (r dockerRunner) action(action string) error {
+	if action == "monitor" {
+		if _, err := monitorTail(os.Getenv("RUNNER_MONITOR_TAIL")); err != nil {
+			return err
+		}
+	}
 	if err := r.selectPlatform(); err != nil {
 		return err
 	}
