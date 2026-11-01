@@ -274,7 +274,7 @@ func (r dockerRunner) refresh() error {
 		inspect: func(format string) (string, error) {
 			return r.docker("container", "inspect", "--format", format, r.Container)
 		},
-		local: func() (localRunner, error) { return inspectLocal(r.Slug) },
+		local:  func() (localRunner, error) { return inspectLocal(r.Slug) },
 		remote: func() ([]runnerRecord, error) { return githubRunners(r.Repo) },
 		docker: func(args ...string) error { return commandRun("", "docker", args...) },
 		create: r.createContainer,
