@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
@@ -44,23 +43,12 @@ func gitHubRepository(repo string) string {
 	repo = strings.TrimPrefix(strings.TrimPrefix(repo, "https://github.com/"), "http://github.com/")
 	return strings.TrimSuffix(strings.TrimSuffix(repo, "/"), ".git")
 }
+// The supported runner backend is Docker on Linux/macOS (including Colima).
+// Native host-service management has been retired; no target repo is implied.
 func selectedBackend() string {
-	b := os.Getenv("RUNNER_BACKEND")
-	if b == "" || b == "auto" {
-		if runtime.GOOS == "darwin" {
-			// Monterey uses Docker; a native macOS runner requires >=13.5.
-			v, e := commandOutput("", "sw_vers", "-productVersion")
-			if e == nil {
-				var major, minor int
-				fmt.Sscanf(v, "%d.%d", &major, &minor)
-				if major >= 14 || major == 13 && minor >= 5 {
-					return "macos"
-				}
-			}
-		}
-		return "docker"
-	}
-	return b
+    b:=os.Getenv("RUNNER_BACKEND")
+    if b==""||b=="auto"{return "docker"}
+    return b
 }
 
 type setupOptions struct {
