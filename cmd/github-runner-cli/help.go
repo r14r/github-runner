@@ -89,7 +89,7 @@ var commandDocs = map[string]commandDoc{
 	},
 	"list-installed": {
 		Summary: "List managed local Docker runners; optionally include a repository's GitHub registrations.",
-		Description: "Without a repository, discovers local runner containers and registration volumes in the CURRENT Docker context. With --repo, filters local installations and queries the selected repository's runner registrations, including other hosts.",
+		Description: "Without a repository, discovers local runner containers and registration volumes in the current Docker context. With --repo, filters local installations and queries the selected repository's runner registrations, including other hosts.",
 		Usage: []string{"ghr list-installed [--repo OWNER/REPO]", "ghr list-installed --all"},
 		Options: []string{"--repo, --repository OWNER/REPO  Optional repository filter; with GitHub API registration details.", "--all                   Explicit alias for listing all LOCAL installations (default without --repo).", "-h, --help             Show this page."},
 		Examples: []string{"ghr list-installed", "ghr list-installed --all", "ghr list-installed --repo r14r/BookBuilder", "ghr list-installed --repository r14r/github-runner-test"},
