@@ -9,188 +9,188 @@ import (
 // Help is handled before runtime asset discovery, flag validation, or any
 // Docker/GitHub command. It is deliberately safe without an installed runner.
 type commandDoc struct {
-	Summary      string
-	Description  string
-	Usage        []string
-	Options      []string
-	Values       []string
-	Examples     []string
-	Notes        []string
+	Summary     string
+	Description string
+	Usage       []string
+	Options     []string
+	Values      []string
+	Examples    []string
+	Notes       []string
 }
 
 const repositoryFlagHelp = "--repo, --repository OWNER/REPO  Required GitHub repository; accepts --repo=OWNER/REPO and HTTPS GitHub URL."
 
 var commandDocs = map[string]commandDoc{
 	"help": {
-		Summary: "Show the overview or detailed documentation for a command.",
+		Summary:     "Show the overview or detailed documentation for a command.",
 		Description: "Prints command syntax, what the command does, accepted parameters and values, examples, and safety notes. Never connects to GitHub or Docker.",
-		Usage: []string{"ghr help", "ghr help <command>", "ghr help runner <subcommand>", "ghr <command> --help"},
-		Options: []string{"<command>              Optional command name (e.g. status, install, list-installed).", "<subcommand>           Required for detailed runner/host subcommand documentation.", "-h, --help             Show help (accepted before any required option)."},
-		Examples: []string{"ghr help", "ghr help status", "ghr status --help", "ghr help runner setup", "ghr runner setup --help"},
+		Usage:       []string{"ghr help", "ghr help <command>", "ghr help runner <subcommand>", "ghr <command> --help"},
+		Options:     []string{"<command>              Optional command name (e.g. status, install, list-installed).", "<subcommand>           Required for detailed runner/host subcommand documentation.", "-h, --help             Show help (accepted before any required option)."},
+		Examples:    []string{"ghr help", "ghr help status", "ghr status --help", "ghr help runner setup", "ghr runner setup --help"},
 	},
 	"version": {
-		Summary: "Show the version embedded in the installed Go binary.",
+		Summary:     "Show the version embedded in the installed Go binary.",
 		Description: "Prints the CLI application version; it does not check Docker or GitHub. The GitHub Actions runner version is managed separately.",
-		Usage: []string{"ghr version"},
-		Options: []string{"-h, --help             Show this page."},
-		Examples: []string{"ghr version"},
+		Usage:       []string{"ghr version"},
+		Options:     []string{"-h, --help             Show this page."},
+		Examples:    []string{"ghr version"},
 	},
 	"install": {
-		Summary: "Build the runner image, register a repository runner and create its Docker container.",
+		Summary:     "Build the runner image, register a repository runner and create its Docker container.",
 		Description: "Runs the Docker preflight, builds the generic or BookBuilder image, checks the BookBuilder toolchain when applicable, creates the persistent volume, registers only if needed, then creates a stopped runner container. Does not change workflows or start jobs.",
-		Usage: []string{"ghr install --repo OWNER/REPO [--allow-public] [--name NAME]"},
-		Options: []string{repositoryFlagHelp, "--allow-public          Explicitly acknowledge running a trusted workflow from a PUBLIC repository.", "--name NAME             Optional runner registration name; ASCII letters/digits/underscore/dot/hyphen.", "-h, --help             Show this page."},
-		Values: []string{"--repo: OWNER/REPO, e.g. r14r/BookBuilder.", "RUNNER_BACKEND: docker or auto (Colima on Monterey).", "RUNNER_PROFILE: auto (default), generic, runner-base, bookbuilder.", "RUNNER_DOCKER_SOCKET: 0 (default) or 1 (privileged opt-in)."},
-		Examples: []string{"ghr install --repo r14r/github-runner-test", "ghr install --repository r14r/BookBuilder --allow-public", "ghr install --repo r14r/BookBuilder --allow-public --name imac-bookbuilder", "ghr start --repo r14r/BookBuilder"},
-		Notes: []string{"A public repository requires --allow-public.", "An already configured registration volume is preserved.", "Stop active workflows before replacing any existing container."},
+		Usage:       []string{"ghr install --repo OWNER/REPO [--allow-public] [--name NAME]"},
+		Options:     []string{repositoryFlagHelp, "--allow-public          Explicitly acknowledge running a trusted workflow from a PUBLIC repository.", "--name NAME             Optional runner registration name; ASCII letters/digits/underscore/dot/hyphen.", "-h, --help             Show this page."},
+		Values:      []string{"--repo: OWNER/REPO, e.g. r14r/BookBuilder.", "RUNNER_BACKEND: docker or auto (Colima on Monterey).", "RUNNER_PROFILE: auto (default), generic, runner-base, bookbuilder.", "RUNNER_DOCKER_SOCKET: 0 (default) or 1 (privileged opt-in)."},
+		Examples:    []string{"ghr install --repo r14r/github-runner-test", "ghr install --repository r14r/BookBuilder --allow-public", "ghr install --repo r14r/BookBuilder --allow-public --name imac-bookbuilder", "ghr start --repo r14r/BookBuilder"},
+		Notes:       []string{"A public repository requires --allow-public.", "An already configured registration volume is preserved.", "Stop active workflows before replacing any existing container."},
 	},
 	"start": {
-		Summary: "Start an installed repository runner container.",
+		Summary:     "Start an installed repository runner container.",
 		Description: "Verifies the persisted registration and image. Starts an existing stopped Docker container, or creates it if missing. Does not install tools or re-register the runner.",
-		Usage: []string{"ghr start --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Examples: []string{"ghr start --repo r14r/BookBuilder", "ghr status --repo r14r/BookBuilder"},
-		Notes: []string{"Install the runner first.", "If the image changed, stop and refresh the container before starting."},
+		Usage:       []string{"ghr start --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Examples:    []string{"ghr start --repo r14r/BookBuilder", "ghr status --repo r14r/BookBuilder"},
+		Notes:       []string{"Install the runner first.", "If the image changed, stop and refresh the container before starting."},
 	},
 	"stop": {
-		Summary: "Stop an installed repository runner container.",
+		Summary:     "Stop an installed repository runner container.",
 		Description: "Stops the Docker container without deleting its GitHub registration or persistent workspace volume.",
-		Usage: []string{"ghr stop --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Examples: []string{"ghr status --repo r14r/BookBuilder", "ghr stop --repo r14r/BookBuilder"},
-		Notes: []string{"Stopping a busy runner interrupts an active GitHub Actions job; check status first."},
+		Usage:       []string{"ghr stop --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Examples:    []string{"ghr status --repo r14r/BookBuilder", "ghr stop --repo r14r/BookBuilder"},
+		Notes:       []string{"Stopping a busy runner interrupts an active GitHub Actions job; check status first."},
 	},
 	"status": {
-		Summary: "Display container state and GitHub online/busy state for one repository runner.",
+		Summary:     "Display container state and GitHub online/busy state for one repository runner.",
 		Description: "Checks local Docker container state, whether its image is outdated, and (where available) its corresponding GitHub runner registration. This command is read-only.",
-		Usage: []string{"ghr status --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values: []string{"Container status: created, running, exited, paused, etc.", "GitHub status: online or offline; busy=true or false."},
-		Examples: []string{"ghr status --repo r14r/BookBuilder", "ghr status --repository r14r/github-runner-test", "ghr status --help"},
-		Notes: []string{"A configured runner and Docker daemon are required to retrieve status.", "Help works without --repo, Docker, or a configured registration."},
+		Usage:       []string{"ghr status --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Values:      []string{"Container status: created, running, exited, paused, etc.", "GitHub status: online or offline; busy=true or false."},
+		Examples:    []string{"ghr status --repo r14r/BookBuilder", "ghr status --repository r14r/github-runner-test", "ghr status --help"},
+		Notes:       []string{"A configured runner and Docker daemon are required to retrieve status.", "Help works without --repo, Docker, or a configured registration."},
 	},
 	"monitor": {
-		Summary: "Continuously display runner status, recent GitHub runs and container logs.",
+		Summary:     "Continuously display runner status, recent GitHub runs and container logs.",
 		Description: "Periodically refreshes local/GitHub runner status, recent workflow runs, and the tail of the Docker logs until interrupted.",
-		Usage: []string{"ghr monitor --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values: []string{"RUNNER_MONITOR_SECONDS: integer >= 2; defaults to 10 seconds."},
-		Examples: []string{"ghr monitor --repo r14r/BookBuilder", "RUNNER_MONITOR_SECONDS=5 ghr monitor --repo r14r/BookBuilder"},
-		Notes: []string{"Ctrl+C stops monitoring, not the runner.", "Detailed step logs belong to GitHub Actions: gh run view RUN_ID --repo OWNER/REPO --log."},
+		Usage:       []string{"ghr monitor --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Values:      []string{"RUNNER_MONITOR_SECONDS: integer >= 2; defaults to 10 seconds."},
+		Examples:    []string{"ghr monitor --repo r14r/BookBuilder", "RUNNER_MONITOR_SECONDS=5 ghr monitor --repo r14r/BookBuilder"},
+		Notes:       []string{"Ctrl+C stops monitoring, not the runner.", "Detailed step logs belong to GitHub Actions: gh run view RUN_ID --repo OWNER/REPO --log."},
 	},
 	"refresh": {
-		Summary: "Replace a STOPPED runner container with the currently built image.",
+		Summary:     "Replace a STOPPED runner container with the currently built image.",
 		Description: "Recreates the container from the chosen image while retaining its existing registration/workspace Docker volume.",
-		Usage: []string{"ghr refresh --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values: []string{"RUNNER_DOCKER_SOCKET: 1 explicitly preserves an existing privileged socket mount."},
-		Examples: []string{"ghr status --repo r14r/BookBuilder", "ghr stop --repo r14r/BookBuilder", "ghr runner download --repo r14r/BookBuilder", "ghr refresh --repo r14r/BookBuilder", "ghr start --repo r14r/BookBuilder"},
-		Notes: []string{"Refuses to replace a running container. Wait for busy=false before stopping.", "Does not delete or re-register the existing runner."},
+		Usage:       []string{"ghr refresh --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Values:      []string{"RUNNER_DOCKER_SOCKET: 1 explicitly preserves an existing privileged socket mount."},
+		Examples:    []string{"ghr status --repo r14r/BookBuilder", "ghr stop --repo r14r/BookBuilder", "ghr runner download --repo r14r/BookBuilder", "ghr refresh --repo r14r/BookBuilder", "ghr start --repo r14r/BookBuilder"},
+		Notes:       []string{"Refuses to replace a running container. Wait for busy=false before stopping.", "Does not delete or re-register the existing runner."},
 	},
 	"list-installed": {
-		Summary: "List managed local Docker runners; optionally include a repository's GitHub registrations.",
+		Summary:     "List managed local Docker runners; optionally include a repository's GitHub registrations.",
 		Description: "Without a repository, discovers local runner containers and registration volumes in the current Docker context. With --repo, filters local installations and queries the selected repository's runner registrations, including other hosts.",
-		Usage: []string{"ghr list-installed [--repo OWNER/REPO]", "ghr list-installed --all"},
-		Options: []string{"--repo, --repository OWNER/REPO  Optional repository filter; with GitHub API registration details.", "--all                   Explicit alias for listing all LOCAL installations (default without --repo).", "-h, --help             Show this page."},
-		Examples: []string{"ghr list-installed", "ghr list-installed --all", "ghr list-installed --repo r14r/BookBuilder", "ghr list-installed --repository r14r/github-runner-test"},
-		Notes: []string{"Without --repo this does NOT enumerate all runners registered in every GitHub repository.", "Read-only; the --repo form requires GitHub CLI API access."},
+		Usage:       []string{"ghr list-installed [--repo OWNER/REPO]", "ghr list-installed --all"},
+		Options:     []string{"--repo, --repository OWNER/REPO  Optional repository filter; with GitHub API registration details.", "--all                   Explicit alias for listing all LOCAL installations (default without --repo).", "-h, --help             Show this page."},
+		Examples:    []string{"ghr list-installed", "ghr list-installed --all", "ghr list-installed --repo r14r/BookBuilder", "ghr list-installed --repository r14r/github-runner-test"},
+		Notes:       []string{"Without --repo this does NOT enumerate all runners registered in every GitHub repository.", "Read-only; the --repo form requires GitHub CLI API access."},
 	},
 	"uninstall": {
-		Summary: "Unregister and remove selected local Docker runners.",
+		Summary:     "Unregister and remove selected local Docker runners.",
 		Description: "Validates each local runner's persisted identity against GitHub and refuses busy runners. Unregisters the matched GitHub runner, stops/removes its container and, only when requested, deletes its persistent volume. Bulk operations preflight all candidates.",
-		Usage: []string{"ghr uninstall --repo OWNER/REPO [--dry-run] [--delete-data]", "ghr uninstall --all --yes [--delete-data]", "ghr uninstall --all --dry-run [--delete-data]"},
-		Options: []string{"--repo, --repository OWNER/REPO  Select exactly one locally installed repository runner.", "--all                   Select ALL locally managed runners in this Docker context; exclusive with --repo.", "--yes                   Required for --all unless --dry-run is set.", "--dry-run               Preview the removal plan; do not change containers, GitHub, or volumes.", "--delete-data           Also delete the persistent Docker registration/workspace volume (irreversible).", "-h, --help             Show this page."},
-		Examples: []string{"ghr uninstall --repo r14r/BookBuilder --dry-run", "ghr uninstall --repo r14r/BookBuilder", "ghr uninstall --repo r14r/BookBuilder --delete-data", "ghr uninstall --all --dry-run", "ghr uninstall --all --yes --delete-data"},
-		Notes: []string{"Does not remove Docker images or unrelated Docker volumes.", "Existing workspace/registration volume is kept by default; --delete-data permanently deletes it.", "No --all deletion without --yes; busy and unidentifiable registrations are refused.", "Does not uninstall macOS launchd or Ubuntu systemd host services."},
+		Usage:       []string{"ghr uninstall --repo OWNER/REPO [--dry-run] [--delete-data]", "ghr uninstall --all --yes [--delete-data]", "ghr uninstall --all --dry-run [--delete-data]"},
+		Options:     []string{"--repo, --repository OWNER/REPO  Select exactly one locally installed repository runner.", "--all                   Select ALL locally managed runners in this Docker context; exclusive with --repo.", "--yes                   Required for --all unless --dry-run is set.", "--dry-run               Preview the removal plan; do not change containers, GitHub, or volumes.", "--delete-data           Also delete the persistent Docker registration/workspace volume (irreversible).", "-h, --help             Show this page."},
+		Examples:    []string{"ghr uninstall --repo r14r/BookBuilder --dry-run", "ghr uninstall --repo r14r/BookBuilder", "ghr uninstall --repo r14r/BookBuilder --delete-data", "ghr uninstall --all --dry-run", "ghr uninstall --all --yes --delete-data"},
+		Notes:       []string{"Does not remove Docker images or unrelated Docker volumes.", "Existing workspace/registration volume is kept by default; --delete-data permanently deletes it.", "No --all deletion without --yes; busy and unidentifiable registrations are refused.", "Does not uninstall macOS launchd or Ubuntu systemd host services."},
 	},
 	"self-uninstall": {
-		Summary: "Delete the installed CLI binary and its adjacent runtime assets.",
+		Summary:     "Delete the installed CLI binary and its adjacent runtime assets.",
 		Description: "Removes only the installed github-runner-cli binary and <INSTALL>/env/github-runner-cli. Requires a real, non-symlink installation; refuses temporary go run paths and GITHUB_RUNNER_CLI_ENV overrides.",
-		Usage: []string{"ghr self-uninstall --yes"},
-		Options: []string{"--yes                   Required confirmation; this operation is irreversible.", "-h, --help             Show this page."},
-		Examples: []string{"ghr self-uninstall --help", "ghr self-uninstall --yes"},
-		Notes: []string{"Does NOT stop/unregister runners or remove Docker containers, images or volumes.", "Run from an installed binary with sufficient filesystem permissions."},
+		Usage:       []string{"ghr self-uninstall --yes"},
+		Options:     []string{"--yes                   Required confirmation; this operation is irreversible.", "-h, --help             Show this page."},
+		Examples:    []string{"ghr self-uninstall --help", "ghr self-uninstall --yes"},
+		Notes:       []string{"Does NOT stop/unregister runners or remove Docker containers, images or volumes.", "Run from an installed binary with sufficient filesystem permissions."},
 	},
 	"runner": {
-		Summary: "Advanced repository-specific runner operations.",
+		Summary:     "Advanced repository-specific runner operations.",
 		Description: "Manage individual lifecycle stages and workflow-routing pull requests. For a new runner prefer the top-level install command.",
-		Usage: []string{"ghr runner <subcommand> --repo OWNER/REPO [options]", "ghr runner docker-doctor", "ghr help runner <subcommand>"},
-		Options: []string{"Subcommands: download, register, configure, setup, pr, install-service, start, stop, status, monitor, foreground, replace-container, uninstall-service, docker-doctor.", "--repo, --repository OWNER/REPO  Required for all subcommands except docker-doctor.", "-h, --help             Show the runner overview or subcommand help."},
-		Examples: []string{"ghr runner docker-doctor", "ghr runner download --repo r14r/BookBuilder", "ghr runner register --repo r14r/BookBuilder --allow-public", "ghr runner setup --repo r14r/BookBuilder --workflow .github/workflows/ci.yml --job build --allow-public", "ghr runner status --help"},
+		Usage:       []string{"ghr runner <subcommand> --repo OWNER/REPO [options]", "ghr runner docker-doctor", "ghr help runner <subcommand>"},
+		Options:     []string{"Subcommands: download, register, configure, setup, pr, install-service, start, stop, status, monitor, foreground, replace-container, uninstall-service, docker-doctor.", "--repo, --repository OWNER/REPO  Required for all subcommands except docker-doctor.", "-h, --help             Show the runner overview or subcommand help."},
+		Examples:    []string{"ghr runner docker-doctor", "ghr runner download --repo r14r/BookBuilder", "ghr runner register --repo r14r/BookBuilder --allow-public", "ghr runner setup --repo r14r/BookBuilder --workflow .github/workflows/ci.yml --job build --allow-public", "ghr runner status --help"},
 	},
 	"runner docker-doctor": {
-		Summary: "Check the Linux x64 Docker environment and Ubuntu APT integrity.",
+		Summary:     "Check the Linux x64 Docker environment and Ubuntu APT integrity.",
 		Description: "Checks Docker daemon/architecture/context, image storage, writable container free space (minimum 2 GiB), and signed Ubuntu package indexes. Useful before image builds, especially with Colima.",
-		Usage: []string{"ghr runner docker-doctor"},
-		Options: []string{"-h, --help             Show this page. No --repo is needed."},
-		Values: []string{"Supported Docker architecture: amd64/x86_64.", "Container writable free space: at least 2 GiB."},
-		Examples: []string{"docker context use colima", "ghr runner docker-doctor"},
-		Notes: []string{"Does not change apt signature settings or modify runner registrations."},
+		Usage:       []string{"ghr runner docker-doctor"},
+		Options:     []string{"-h, --help             Show this page. No --repo is needed."},
+		Values:      []string{"Supported Docker architecture: amd64/x86_64.", "Container writable free space: at least 2 GiB."},
+		Examples:    []string{"docker context use colima", "ghr runner docker-doctor"},
+		Notes:       []string{"Does not change apt signature settings or modify runner registrations."},
 	},
 	"runner download": {
-		Summary: "Build the selected repository runner Docker image and prepare its volume.",
+		Summary:     "Build the selected repository runner Docker image and prepare its volume.",
 		Description: "Runs Docker preflight, builds the generic/BookBuilder image, checks the BookBuilder toolchain when selected, and creates the persistent registration volume if absent. Does not register or start a runner.",
-		Usage: []string{"ghr runner download --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values: []string{"RUNNER_PROFILE: auto, generic, runner-base, bookbuilder.", "RUNNER_IMAGE: optional explicit image tag override."},
-		Examples: []string{"ghr runner download --repo r14r/BookBuilder", "ghr runner register --repo r14r/BookBuilder --allow-public"},
+		Usage:       []string{"ghr runner download --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Values:      []string{"RUNNER_PROFILE: auto, generic, runner-base, bookbuilder.", "RUNNER_IMAGE: optional explicit image tag override."},
+		Examples:    []string{"ghr runner download --repo r14r/BookBuilder", "ghr runner register --repo r14r/BookBuilder --allow-public"},
 	},
 	"runner register": {
-		Summary: "Register a repository runner with GitHub using a fresh registration token.",
+		Summary:     "Register a repository runner with GitHub using a fresh registration token.",
 		Description: "Checks repository visibility and existing registration, obtains a short-lived token through gh, and configures the runner. Does not create/start a service container.",
-		Usage: []string{"ghr runner register --repo OWNER/REPO [--allow-public] [--name NAME]"},
-		Options: []string{repositoryFlagHelp, "--allow-public          Required for public repositories.", "--name NAME             Optional ASCII runner name (letters, numbers, underscore, dot, hyphen).", "-h, --help             Show this page."},
-		Examples: []string{"ghr runner download --repo r14r/BookBuilder", "ghr runner register --repo r14r/BookBuilder --allow-public"},
-		Notes: []string{"Existing runner registrations are not overwritten.", "The registration token is passed on standard input, not command arguments."},
+		Usage:       []string{"ghr runner register --repo OWNER/REPO [--allow-public] [--name NAME]"},
+		Options:     []string{repositoryFlagHelp, "--allow-public          Required for public repositories.", "--name NAME             Optional ASCII runner name (letters, numbers, underscore, dot, hyphen).", "-h, --help             Show this page."},
+		Examples:    []string{"ghr runner download --repo r14r/BookBuilder", "ghr runner register --repo r14r/BookBuilder --allow-public"},
+		Notes:       []string{"Existing runner registrations are not overwritten.", "The registration token is passed on standard input, not command arguments."},
 	},
 	"runner setup": {
-		Summary: "Open a GitHub pull request routing selected workflow jobs to the repository runner.",
+		Summary:     "Open a GitHub pull request routing selected workflow jobs to the repository runner.",
 		Description: "Clones the repository, validates and rewrites job-level runs-on selectors to the repository runner label, pushes a branch, and opens a PR. Merges only when explicitly requested and CI checks pass.",
-		Usage: []string{"ghr runner setup --repo OWNER/REPO [--workflow PATH] [--job ID] [--base BRANCH] [--allow-public] [--allow-cross-os] [--merge|--no-merge]"},
-		Options: []string{repositoryFlagHelp, "--workflow PATH         Workflow file relative to the repository, e.g. .github/workflows/ci.yml; repeatable.", "--job ID                Job identifier to change; repeatable. If omitted, selects supported jobs.", "--base BRANCH           PR base branch; defaults to repository default branch.", "--allow-public          Required for a public repository.", "--allow-cross-os        Permit macOS/Linux changes to runs-on; review carefully.", "--merge                 Watch required checks and squash-merge PR when successful.", "--no-merge              Leave PR open for review (default).", "-h, --help             Show this page."},
-		Values: []string{"--repo: OWNER/REPO.", "--workflow: .github/workflows/*.yml or *.yaml.", "--job: YAML job ID, e.g. build, test, python.", "--base: an existing Git branch name."},
-		Examples: []string{"ghr runner setup --repo r14r/BookBuilder --workflow .github/workflows/ci.yml --job build --allow-public", "ghr runner setup --repository r14r/BookBuilder --workflow .github/workflows/ci.yml --job test --allow-public --merge"},
-		Notes: []string{"Requires a registered runner and authenticated gh/git.", "Dynamic/multiline runs-on configurations are refused rather than guessed.", "Use --allow-cross-os only after reviewing the execution environment."},
+		Usage:       []string{"ghr runner setup --repo OWNER/REPO [--workflow PATH] [--job ID] [--base BRANCH] [--allow-public] [--allow-cross-os] [--merge|--no-merge]"},
+		Options:     []string{repositoryFlagHelp, "--workflow PATH         Workflow file relative to the repository, e.g. .github/workflows/ci.yml; repeatable.", "--job ID                Job identifier to change; repeatable. If omitted, selects supported jobs.", "--base BRANCH           PR base branch; defaults to repository default branch.", "--allow-public          Required for a public repository.", "--allow-cross-os        Permit macOS/Linux changes to runs-on; review carefully.", "--merge                 Watch required checks and squash-merge PR when successful.", "--no-merge              Leave PR open for review (default).", "-h, --help             Show this page."},
+		Values:      []string{"--repo: OWNER/REPO.", "--workflow: .github/workflows/*.yml or *.yaml.", "--job: YAML job ID, e.g. build, test, python.", "--base: an existing Git branch name."},
+		Examples:    []string{"ghr runner setup --repo r14r/BookBuilder --workflow .github/workflows/ci.yml --job build --allow-public", "ghr runner setup --repository r14r/BookBuilder --workflow .github/workflows/ci.yml --job test --allow-public --merge"},
+		Notes:       []string{"Requires a registered runner and authenticated gh/git.", "Dynamic/multiline runs-on configurations are refused rather than guessed.", "Use --allow-cross-os only after reviewing the execution environment."},
 	},
 	"runner install-service": {
-		Summary: "Create the Docker service container for an already registered runner.",
+		Summary:     "Create the Docker service container for an already registered runner.",
 		Description: "Creates the runner's restartable Docker container from its configured image and persistent volume, unless already present. Does not start it.",
-		Usage: []string{"ghr runner install-service --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values: []string{"RUNNER_DOCKER_SOCKET: 0 (default), 1 (privileged socket mount)."},
-		Examples: []string{"ghr runner install-service --repo r14r/BookBuilder", "ghr start --repo r14r/BookBuilder"},
+		Usage:       []string{"ghr runner install-service --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Values:      []string{"RUNNER_DOCKER_SOCKET: 0 (default), 1 (privileged socket mount)."},
+		Examples:    []string{"ghr runner install-service --repo r14r/BookBuilder", "ghr start --repo r14r/BookBuilder"},
 	},
 	"runner foreground": {
-		Summary: "Attach to the runner container's live process in the terminal.",
+		Summary:     "Attach to the runner container's live process in the terminal.",
 		Description: "Creates a missing service container if needed and starts it attached to your terminal; unlike monitor, this attaches to the container process.",
-		Usage: []string{"ghr runner foreground --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Examples: []string{"ghr runner foreground --repo r14r/BookBuilder"},
-		Notes: []string{"This is not a read-only monitoring command. Use 'ghr monitor' for passive observation."},
+		Usage:       []string{"ghr runner foreground --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Examples:    []string{"ghr runner foreground --repo r14r/BookBuilder"},
+		Notes:       []string{"This is not a read-only monitoring command. Use 'ghr monitor' for passive observation."},
 	},
 	"runner replace-container": {
-		Summary: "Replace a stopped service container with the new runner image.",
+		Summary:     "Replace a stopped service container with the new runner image.",
 		Description: "The advanced equivalent of top-level refresh. Keeps the repository's persistent registration/workspace volume.",
-		Usage: []string{"ghr runner replace-container --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Examples: []string{"ghr stop --repo r14r/BookBuilder", "ghr runner download --repo r14r/BookBuilder", "ghr runner replace-container --repo r14r/BookBuilder"},
-		Notes: []string{"Will not replace a running container.", "Does not delete the runner's registration volume."},
+		Usage:       []string{"ghr runner replace-container --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Examples:    []string{"ghr stop --repo r14r/BookBuilder", "ghr runner download --repo r14r/BookBuilder", "ghr runner replace-container --repo r14r/BookBuilder"},
+		Notes:       []string{"Will not replace a running container.", "Does not delete the runner's registration volume."},
 	},
 	"runner uninstall-service": {
-		Summary: "Remove the runner service container but keep its registration.",
+		Summary:     "Remove the runner service container but keep its registration.",
 		Description: "Removes only the selected repository runner container. It does not unregister the runner on GitHub or delete the volume.",
-		Usage: []string{"ghr runner uninstall-service --repo OWNER/REPO"},
-		Options: []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Examples: []string{"ghr runner uninstall-service --repo r14r/BookBuilder", "ghr uninstall --repo r14r/BookBuilder --dry-run"},
-		Notes: []string{"May forcibly stop a running container; verify the runner is idle first.", "For complete removal, prefer top-level uninstall with --dry-run."},
+		Usage:       []string{"ghr runner uninstall-service --repo OWNER/REPO"},
+		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
+		Examples:    []string{"ghr runner uninstall-service --repo r14r/BookBuilder", "ghr uninstall --repo r14r/BookBuilder --dry-run"},
+		Notes:       []string{"May forcibly stop a running container; verify the runner is idle first.", "For complete removal, prefer top-level uninstall with --dry-run."},
 	},
 	"host": {
-		Summary: "Legacy macOS launchd and Ubuntu systemd host-service administration.",
+		Summary:     "Legacy macOS launchd and Ubuntu systemd host-service administration.",
 		Description: "Dispatches retained compatibility scripts from <INSTALL>/env/github-runner-cli/scripts. Separate from Docker runner management; commands may act on an existing native host installation.",
-		Usage: []string{"ghr host <subcommand> [--repo OWNER/REPO] [args]", "ghr help host <subcommand>"},
-		Options: []string{"Subcommands: install, doctor, start, stop, status, monitor, repair, migrate, cleanup, actions-cancel, actions-delete, actions-clear.", "--repo, --repository OWNER/REPO  Optional for legacy scripts using RUNNER_REPO.", "-h, --help             Show host group or subcommand help."},
-		Examples: []string{"ghr host doctor", "ghr host status", "ghr host monitor", "ghr help host repair"},
-		Notes: []string{"Host operations are legacy compatibility scripts, not the Docker runner lifecycle.", "Use caution: native services and credentials are separate from Docker containers."},
+		Usage:       []string{"ghr host <subcommand> [--repo OWNER/REPO] [args]", "ghr help host <subcommand>"},
+		Options:     []string{"Subcommands: install, doctor, start, stop, status, monitor, repair, migrate, cleanup, actions-cancel, actions-delete, actions-clear.", "--repo, --repository OWNER/REPO  Optional for legacy scripts using RUNNER_REPO.", "-h, --help             Show host group or subcommand help."},
+		Examples:    []string{"ghr host doctor", "ghr host status", "ghr host monitor", "ghr help host repair"},
+		Notes:       []string{"Host operations are legacy compatibility scripts, not the Docker runner lifecycle.", "Use caution: native services and credentials are separate from Docker containers."},
 	},
 }
 
@@ -198,25 +198,25 @@ var commandDocs = map[string]commandDoc{
 func init() {
 	for alias, canonical := range map[string]string{
 		"runner configure": "runner register",
-		"runner pr": "runner setup",
-		"runner start": "start",
-		"runner stop": "stop",
-		"runner status": "status",
-		"runner monitor": "monitor",
+		"runner pr":        "runner setup",
+		"runner start":     "start",
+		"runner stop":      "stop",
+		"runner status":    "status",
+		"runner monitor":   "monitor",
 	} {
 		doc := commandDocs[canonical]
 		doc.Usage = append([]string(nil), doc.Usage...)
 		for i := range doc.Usage {
 			doc.Usage[i] = strings.Replace(doc.Usage[i], "ghr "+canonical, "ghr "+alias, 1)
 		}
-		if !strings.HasPrefix(alias,"runner ") || strings.HasPrefix(canonical,"runner ") {
+		if !strings.HasPrefix(alias, "runner ") || strings.HasPrefix(canonical, "runner ") {
 			doc.Notes = append(doc.Notes, "Alias of: ghr "+canonical)
 		} else {
 			doc.Notes = append(doc.Notes, "Advanced alias for top-level: ghr "+canonical)
 		}
 		commandDocs[alias] = doc
 	}
-	for _, spec := range []struct{command, summary, detail, args, example string}{
+	for _, spec := range []struct{ command, summary, detail, args, example string }{
 		{"install", "Install a legacy native runner service.", "Runs the OS-specific installer, which may install tools, register a runner, and configure launchd/systemd. This is NOT the top-level Docker install.", "[--repo OWNER/REPO]", "ghr host install"},
 		{"doctor", "Check legacy host toolchain requirements.", "Runs the Linux or macOS doctor script and reports missing/incompatible tools.", "", "ghr host doctor"},
 		{"start", "Start the existing native runner service.", "Invokes svc.sh start on the native launchd/systemd runner installation; does not touch Docker.", "", "ghr host start"},
@@ -231,22 +231,27 @@ func init() {
 		{"actions-clear", "Cancel active runs and clear eligible GitHub Actions history.", "Legacy combined GitHub Actions cleanup; read the script before use.", "", "ghr host actions-clear"},
 	} {
 		doc := commandDoc{
-			Summary: spec.summary,
+			Summary:     spec.summary,
 			Description: spec.detail,
-			Usage: []string{"ghr host "+spec.command+func()string{if spec.args==""{return ""};return " "+spec.args}()},
-			Options: []string{"--repo, --repository OWNER/REPO  Optional legacy repository context (environment: RUNNER_REPO).", "-h, --help             Show this page."},
+			Usage: []string{"ghr host " + spec.command + func() string {
+				if spec.args == "" {
+					return ""
+				}
+				return " " + spec.args
+			}()},
+			Options:  []string{"--repo, --repository OWNER/REPO  Optional legacy repository context (environment: RUNNER_REPO).", "-h, --help             Show this page."},
 			Examples: []string{spec.example},
-			Notes: []string{"Legacy native host operation; does not manage Docker/Colima runners.", "Requires the matching host runtime scripts under <INSTALL>/env/github-runner-cli/scripts/."},
+			Notes:    []string{"Legacy native host operation; does not manage Docker/Colima runners.", "Requires the matching host runtime scripts under <INSTALL>/env/github-runner-cli/scripts/."},
 		}
-		if spec.command=="monitor" {
-			doc.Values=[]string{"SECONDS: polling interval, integer >= 2; default 10."}
+		if spec.command == "monitor" {
+			doc.Values = []string{"SECONDS: polling interval, integer >= 2; default 10."}
 		}
-		if spec.command=="cleanup" {
-			doc.Values=[]string{"DAYS: age cutoff in days; default 30 when omitted."}
-			doc.Examples=append(doc.Examples,"RUNNER_CLEANUP_DRY_RUN=1 ghr host cleanup 30")
+		if spec.command == "cleanup" {
+			doc.Values = []string{"DAYS: age cutoff in days; default 30 when omitted."}
+			doc.Examples = append(doc.Examples, "RUNNER_CLEANUP_DRY_RUN=1 ghr host cleanup 30")
 		}
-		if strings.HasPrefix(spec.command,"actions-"){
-			doc.Notes=append(doc.Notes,"These operations may change or delete GitHub Actions runs; use caution.")
+		if strings.HasPrefix(spec.command, "actions-") {
+			doc.Notes = append(doc.Notes, "These operations may change or delete GitHub Actions runs; use caution.")
 		}
 		commandDocs["host "+spec.command] = doc
 	}
@@ -255,62 +260,70 @@ func init() {
 // maybeShowHelp interprets help requests before any other parsing, including
 // the required repository flag, asset discovery, and side-effecting operations.
 func maybeShowHelp(args []string) (bool, error) {
-	if len(args)==0 { return false,nil }
-	first:=strings.ToLower(args[0])
+	if len(args) == 0 {
+		return false, nil
+	}
+	first := strings.ToLower(args[0])
 	switch first {
 	case "help":
 		return true, showCommandHelp(args[1:])
-	case "-h","--help":
+	case "-h", "--help":
 		return true, showCommandHelp(args[1:])
 	}
-	if first=="runner" || first=="host" {
-		if len(args)>1 && strings.EqualFold(args[1],"help") {
-			return true, showCommandHelp(append([]string{first},args[2:]...))
+	if first == "runner" || first == "host" {
+		if len(args) > 1 && strings.EqualFold(args[1], "help") {
+			return true, showCommandHelp(append([]string{first}, args[2:]...))
 		}
 	}
 	for _, arg := range args[1:] {
-		if arg=="--help" || arg=="-h" {
-			if (first=="runner" || first=="host") && len(args)>2 && args[1]!="--help" && args[1]!="-h" {
-				return true, showCommandHelp([]string{first,args[1]})
+		if arg == "--help" || arg == "-h" {
+			if (first == "runner" || first == "host") && len(args) > 2 && args[1] != "--help" && args[1] != "-h" {
+				return true, showCommandHelp([]string{first, args[1]})
 			}
 			return true, showCommandHelp([]string{first})
 		}
 	}
-	return false,nil
+	return false, nil
 }
 
 func showCommandHelp(path []string) error {
-	filtered:=make([]string,0,len(path))
-	for _,a:=range path{
-		if a=="-h" || a=="--help" {continue}
-		filtered=append(filtered,strings.ToLower(a))
+	filtered := make([]string, 0, len(path))
+	for _, a := range path {
+		if a == "-h" || a == "--help" {
+			continue
+		}
+		filtered = append(filtered, strings.ToLower(a))
 	}
-	if len(filtered)==0 {
+	if len(filtered) == 0 {
 		fmt.Fprint(os.Stdout, globalHelp)
 		return nil
 	}
-	if len(filtered)>2 {
-		return fmt.Errorf("unknown help topic %q; use 'ghr help' for available commands",strings.Join(filtered," "))
+	if len(filtered) > 2 {
+		return fmt.Errorf("unknown help topic %q; use 'ghr help' for available commands", strings.Join(filtered, " "))
 	}
-	key:=strings.Join(filtered," ")
-	doc,ok:=commandDocs[key]
+	key := strings.Join(filtered, " ")
+	doc, ok := commandDocs[key]
 	if !ok {
-		return fmt.Errorf("unknown help topic %q; use 'ghr help' for available commands",key)
+		return fmt.Errorf("unknown help topic %q; use 'ghr help' for available commands", key)
 	}
-	fmt.Printf("ghr %s — %s\n\n%s\n",key,doc.Summary,doc.Description)
-	printHelpSection("USAGE",doc.Usage)
-	printHelpSection("OPTIONS",doc.Options)
-	printHelpSection("VALUES",doc.Values)
-	printHelpSection("EXAMPLES",doc.Examples)
-	printHelpSection("NOTES",doc.Notes)
+	fmt.Printf("ghr %s — %s\n\n%s\n", key, doc.Summary, doc.Description)
+	printHelpSection("USAGE", doc.Usage)
+	printHelpSection("OPTIONS", doc.Options)
+	printHelpSection("VALUES", doc.Values)
+	printHelpSection("EXAMPLES", doc.Examples)
+	printHelpSection("NOTES", doc.Notes)
 	fmt.Print("\nTip: 'ghr help' lists all available commands. 'github-runner-cli' is the full executable name.\n")
 	return nil
 }
 
-func printHelpSection(title string,values []string) {
-	if len(values)==0 {return}
-	fmt.Printf("\n%s:\n",title)
-	for _,v:=range values{fmt.Printf("  %s\n",v)}
+func printHelpSection(title string, values []string) {
+	if len(values) == 0 {
+		return
+	}
+	fmt.Printf("\n%s:\n", title)
+	for _, v := range values {
+		fmt.Printf("  %s\n", v)
+	}
 }
 
 const globalHelp = `github-runner-cli (ghr) — GitHub Actions runner manager

@@ -9,29 +9,35 @@ import (
 )
 
 func TestRemainingHostAndContainerScriptsParse(t *testing.T) {
-    root := filepath.Join("..", "..")
-    var paths []string
-    for _, pattern := range []string{"scripts/*.sh", "runner/*.sh", "runner/lib/*.sh", "runner/docker/*.sh"} {
-        matches, err := filepath.Glob(filepath.Join(root, pattern))
-        if err != nil { t.Fatal(err) }
-        paths = append(paths, matches...)
-    }
-    // Check specific runtime contracts; do not depend on a brittle total count.
-    for _, expected := range []string{
-        "scripts/install.sh", "scripts/control.sh", "scripts/doctor-linux.sh",
-        "runner/01-download.sh", "runner/02-configure.sh",
-        "runner/04-run.sh", "runner/docker/entrypoint.sh",
-    } {
-        path := filepath.Join(root, filepath.FromSlash(expected))
-        if _, err := os.Stat(path); err != nil {
-            t.Errorf("required runtime script missing: %s: %v", expected, err)
-        }
-    }
-    if len(paths) == 0 { t.Fatal("no shell runtime scripts discovered") }
-    for _, path := range paths {
-        out, err := exec.Command("bash", "-n", path).CombinedOutput()
-        if err != nil { t.Errorf("bash syntax %s: %v: %s", path, err, out) }
-    }
+	root := filepath.Join("..", "..")
+	var paths []string
+	for _, pattern := range []string{"scripts/*.sh", "runner/*.sh", "runner/lib/*.sh", "runner/docker/*.sh"} {
+		matches, err := filepath.Glob(filepath.Join(root, pattern))
+		if err != nil {
+			t.Fatal(err)
+		}
+		paths = append(paths, matches...)
+	}
+	// Check specific runtime contracts; do not depend on a brittle total count.
+	for _, expected := range []string{
+		"scripts/install.sh", "scripts/control.sh", "scripts/doctor-linux.sh",
+		"runner/01-download.sh", "runner/02-configure.sh",
+		"runner/04-run.sh", "runner/docker/entrypoint.sh",
+	} {
+		path := filepath.Join(root, filepath.FromSlash(expected))
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("required runtime script missing: %s: %v", expected, err)
+		}
+	}
+	if len(paths) == 0 {
+		t.Fatal("no shell runtime scripts discovered")
+	}
+	for _, path := range paths {
+		out, err := exec.Command("bash", "-n", path).CombinedOutput()
+		if err != nil {
+			t.Errorf("bash syntax %s: %v: %s", path, err, out)
+		}
+	}
 }
 
 func TestDockerEntrypointRetainsVolumeAndTokenOnStdin(t *testing.T) {

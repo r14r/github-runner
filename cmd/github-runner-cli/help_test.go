@@ -12,14 +12,18 @@ func captureCLI(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 	old := os.Stdout
 	read, write, err := os.Pipe()
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	os.Stdout = write
 	defer func() { os.Stdout = old; _ = read.Close() }()
 	// Deliberately no runtime assets: detailed help must be stand-alone.
 	err = run(args, filepath.Join(t.TempDir(), "no-installed-binary"), t.TempDir())
 	_ = write.Close()
 	data, readErr := io.ReadAll(read)
-	if readErr != nil { t.Fatal(readErr) }
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
 	return string(data), err
 }
 
@@ -31,9 +35,14 @@ func TestEveryCommandHasHelpfulDetailedDocumentation(t *testing.T) {
 		}
 		path := strings.Split(name, " ")
 		text, err := captureCLI(t, append([]string{"help"}, path...)...)
-		if err != nil { t.Errorf("help for %q failed: %v", name, err); continue }
+		if err != nil {
+			t.Errorf("help for %q failed: %v", name, err)
+			continue
+		}
 		for _, expected := range []string{"USAGE:", "OPTIONS:", "EXAMPLES:", doc.Summary} {
-			if !strings.Contains(text, expected) { t.Errorf("help for %q missing %q", name, expected) }
+			if !strings.Contains(text, expected) {
+				t.Errorf("help for %q missing %q", name, expected)
+			}
 		}
 	}
 }
@@ -41,7 +50,7 @@ func TestEveryCommandHasHelpfulDetailedDocumentation(t *testing.T) {
 func TestHelpWorksBeforeAssetsAndRequiredRepo(t *testing.T) {
 	t.Setenv("GITHUB_RUNNER_CLI_ENV", filepath.Join(t.TempDir(), "does-not-exist"))
 	cases := []struct {
-		args []string
+		args     []string
 		expected []string
 	}{
 		{[]string{"help"}, []string{"RUNNER COMMANDS:", "MORE HELP:", "GLOBAL ENVIRONMENT:"}},
@@ -68,9 +77,14 @@ func TestHelpWorksBeforeAssetsAndRequiredRepo(t *testing.T) {
 	}
 	for _, tt := range cases {
 		text, err := captureCLI(t, tt.args...)
-		if err != nil { t.Errorf("%v returned %v", tt.args, err); continue }
+		if err != nil {
+			t.Errorf("%v returned %v", tt.args, err)
+			continue
+		}
 		for _, expected := range tt.expected {
-			if !strings.Contains(text, expected) { t.Errorf("%v missing %q in %q", tt.args, expected, text) }
+			if !strings.Contains(text, expected) {
+				t.Errorf("%v missing %q in %q", tt.args, expected, text)
+			}
 		}
 	}
 }
@@ -104,6 +118,8 @@ func TestHelpAliasesDocumentAllImplementedActions(t *testing.T) {
 		"host status", "host monitor", "host repair", "host migrate", "host cleanup",
 		"host actions-cancel", "host actions-delete", "host actions-clear",
 	} {
-		if _, ok := commandDocs[name]; !ok { t.Errorf("no documentation for %s", name) }
+		if _, ok := commandDocs[name]; !ok {
+			t.Errorf("no documentation for %s", name)
+		}
 	}
 }

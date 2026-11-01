@@ -74,31 +74,41 @@ type setupOptions struct {
 }
 
 func parseSetup(args []string) (setupOptions, error) {
-    var o setupOptions
-    repo, rest, err := requireRepo(args)
-    if err != nil { return o, err }
-    o.repo = repo
-    for i := 0; i < len(rest); i++ {
-        switch rest[i] {
-        case "--allow-public": o.allowPublic = true
-        case "--allow-cross-os": o.allowCrossOS = true
-        case "--merge": o.merge = true
-        case "--no-merge": o.merge = false
-        case "--workflow", "--job", "--base":
-            if i+1 >= len(rest) || strings.HasPrefix(rest[i+1], "--") {
-                return o, fmt.Errorf("%s requires a value", rest[i])
-            }
-            key := rest[i]
-            i++
-            switch key {
-            case "--workflow": o.workflows = append(o.workflows, rest[i])
-            case "--job": o.jobs = append(o.jobs, rest[i])
-            case "--base": o.base = rest[i]
-            }
-        default: return o, fmt.Errorf("unknown setup option %q", rest[i])
-        }
-    }
-    return o, nil
+	var o setupOptions
+	repo, rest, err := requireRepo(args)
+	if err != nil {
+		return o, err
+	}
+	o.repo = repo
+	for i := 0; i < len(rest); i++ {
+		switch rest[i] {
+		case "--allow-public":
+			o.allowPublic = true
+		case "--allow-cross-os":
+			o.allowCrossOS = true
+		case "--merge":
+			o.merge = true
+		case "--no-merge":
+			o.merge = false
+		case "--workflow", "--job", "--base":
+			if i+1 >= len(rest) || strings.HasPrefix(rest[i+1], "--") {
+				return o, fmt.Errorf("%s requires a value", rest[i])
+			}
+			key := rest[i]
+			i++
+			switch key {
+			case "--workflow":
+				o.workflows = append(o.workflows, rest[i])
+			case "--job":
+				o.jobs = append(o.jobs, rest[i])
+			case "--base":
+				o.base = rest[i]
+			}
+		default:
+			return o, fmt.Errorf("unknown setup option %q", rest[i])
+		}
+	}
+	return o, nil
 }
 func setupWorkflow(args []string) error {
 	o, e := parseSetup(args)
