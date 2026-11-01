@@ -97,13 +97,13 @@ var commandDocs = map[string]commandDoc{
 		Notes:       []string{"A configured runner and Docker daemon are required to retrieve status.", "Help works without --repo, Docker, or a configured registration."},
 	},
 	"monitor": {
-		Summary:     "Continuously display runner status, recent GitHub runs and container logs.",
-		Description: "Periodically refreshes local/GitHub runner status, recent workflow runs, and the tail of the Docker logs until interrupted.",
+		Summary:     "Stream new Docker runner log lines continuously, without repeating previous output.",
+		Description: "Displays runner status and five recent GitHub Actions runs once, prints an initial log tail once, then attaches to the live Docker log stream. New lines appear as the runner emits them; there is no polling interval or repeated log history.",
 		Usage:       []string{"ghr monitor --repo OWNER/REPO"},
 		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values:      []string{"RUNNER_MONITOR_SECONDS: integer >= 2; defaults to 10 seconds."},
-		Examples:    []string{"ghr monitor --repo example-org/demo-app", "RUNNER_MONITOR_SECONDS=5 ghr monitor --repo example-org/demo-app"},
-		Notes:       []string{"Ctrl+C stops monitoring, not the runner.", "Detailed step logs belong to GitHub Actions: gh run view RUN_ID --repo OWNER/REPO --log."},
+		Values:      []string{"RUNNER_MONITOR_TAIL: initial number of existing log lines (integer 0..1000; default 8). Set 0 to show only new lines."},
+		Examples:    []string{"ghr monitor --repo example-org/demo-app", "RUNNER_MONITOR_TAIL=0 ghr monitor --repo example-org/demo-app", "RUNNER_MONITOR_TAIL=30 ghr monitor --repo example-org/demo-app"},
+		Notes:       []string{"Ctrl+C stops monitoring, not the runner.", "If the container stops or Docker disconnects, the stream ends; rerun monitor after restarting.", "This streams runner container logs, not GitHub Actions job step logs. Use gh run view RUN_ID --repo OWNER/REPO --log for job details."},
 	},
 	"refresh": {
 		Summary:     "Replace the runner container and automatically restart it if it was running and idle.",
@@ -349,7 +349,7 @@ GLOBAL ENVIRONMENT:
   RUNNER_PROFILE            auto (default), generic, toolchain, runner-base
   RUNNER_IMAGE              Optional explicit Docker image tag
   RUNNER_DOCKER_SOCKET      0 (default), 1 (privileged opt-in)
-  RUNNER_MONITOR_SECONDS    Poll interval in seconds: integer >= 2; default 10
+  RUNNER_MONITOR_TAIL       Initial log lines: 0..1000; default 8 (0 = new only)
   GITHUB_RUNNER_CLI_ENV     Override installed runtime assets directory
 
 GETTING STARTED:
