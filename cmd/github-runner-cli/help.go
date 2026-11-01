@@ -106,13 +106,13 @@ var commandDocs = map[string]commandDoc{
 		Notes:       []string{"Ctrl+C stops monitoring, not the runner.", "Detailed step logs belong to GitHub Actions: gh run view RUN_ID --repo OWNER/REPO --log."},
 	},
 	"refresh": {
-		Summary:     "Replace a STOPPED runner container with the currently built image.",
-		Description: "Recreates the container from the chosen image while retaining its existing registration/workspace Docker volume.",
+		Summary:     "Replace the runner container and automatically restart it if it was running and idle.",
+		Description: "Preserves the existing GitHub registration and persistent workspace volume. When the container is running, verifies the exact GitHub runner ID/name and busy status before stopping, replacing and restarting it. An already stopped runner stays stopped.",
 		Usage:       []string{"ghr refresh --repo OWNER/REPO"},
 		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values:      []string{"RUNNER_DOCKER_SOCKET: 1 explicitly preserves an existing privileged socket mount."},
-		Examples:    []string{"ghr status --repo example-org/demo-app", "ghr stop --repo example-org/demo-app", "ghr runner download --repo example-org/demo-app", "ghr refresh --repo example-org/demo-app", "ghr start --repo example-org/demo-app"},
-		Notes:       []string{"Refuses to replace a running container. Wait for busy=false before stopping.", "Does not delete or re-register the existing runner."},
+		Values:      []string{"RUNNER_DOCKER_SOCKET: 1 explicitly preserves an existing privileged Docker socket mount."},
+		Examples:    []string{"ghr build --repo example-org/demo-app", "ghr doctor --repo example-org/demo-app", "ghr refresh --repo example-org/demo-app", "ghr status --repo example-org/demo-app"},
+		Notes:       []string{"Refuses refresh when the running runner is busy, GitHub status is unavailable, or its registration cannot be verified.", "A running idle runner is automatically stopped and restarted; a stopped runner remains stopped.", "Existing registration volume is retained and the runner is never unregistered.", "If replacement fails, report the error and preserve the registration volume."},
 	},
 	"list-installed": {
 		Summary:     "List managed local Docker runners; optionally include a repository's GitHub registrations.",
