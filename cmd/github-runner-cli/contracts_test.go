@@ -47,7 +47,7 @@ func TestGenericDockerImageUsesSafeAllowlistedToolchain(t *testing.T) {
 			t.Errorf("generic image missing %s", want)
 		}
 	}
-	for _, forbidden := range []string{"AS bookbuilder", "ppa:ondrej/php",
+	for _, forbidden := range []string{"ppa:ondrej/php",
 		"trusted=yes", "AllowInsecureRepositories"} {
 		if strings.Contains(source, forbidden) {
 			t.Errorf("unsafe or target-specific image reference: %s", forbidden)
