@@ -81,14 +81,14 @@ func yamlManifest(m toolchainManifest) []byte {
     fmt.Fprintln(&b,"schema_version: 1")
     fmt.Fprintf(&b,"repository: %s\nrevision: %s\nprofile: %s\nimage: %s\n",scalar(m.Repository),scalar(m.Revision),scalar(m.Profile),scalar(m.Image))
     writeList:=func(name string,values []string){
+        if len(values)==0{fmt.Fprintln(&b,name+": []");return}
         fmt.Fprintln(&b,name+":")
-        if len(values)==0{fmt.Fprintln(&b,"  []");return}
         for _,v:=range values{fmt.Fprintln(&b,"  - "+scalar(v))}
     }
     writeList("workflows",m.Workflows)
     writeList("actions",m.Actions)
-    fmt.Fprintln(&b,"tools:")
-    if len(m.Tools)==0 {fmt.Fprintln(&b,"  []")} else {
+    if len(m.Tools)==0{fmt.Fprintln(&b,"tools: []")} else {
+        fmt.Fprintln(&b,"tools:")
         for _,t:=range m.Tools{
             fmt.Fprintf(&b,"  - name: %s\n    version: %s\n    source: %s\n",scalar(t.Name),scalar(t.Version),scalar(t.Source))
         }
