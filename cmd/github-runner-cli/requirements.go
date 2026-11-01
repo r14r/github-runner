@@ -282,6 +282,10 @@ func validateProfile(m toolchainManifest)error{
         "bookbuilder":{"python":true,"docker":true,"node":true,"java":true,"typst":true,"php":true,"just":true,"ffmpeg":true,"fontconfig":true},
     }
     for _,t:=range m.Tools{
+        if !available[m.Profile][t.Name] && strings.Contains(t.Source,"setup-"){
+            // Official setup actions provision their own runtime at job time.
+            continue
+        }
         if !available[m.Profile][t.Name]{return fmt.Errorf("runner profile %s does not include required tool %s (%s); select an appropriate RUNNER_PROFILE or extend the Dockerfile",m.Profile,t.Name,t.Source)}
         if pin:=knownVersions[m.Profile][t.Name];pin!=""&&t.Version!=""&&pin!=t.Version{
             return fmt.Errorf("runner profile %s provides %s %s, but workflows require %s",m.Profile,t.Name,pin,t.Version)
@@ -298,6 +302,15 @@ func toolchainDoctor(r dockerRunner)error{
     if err=r.selectPlatform();err!=nil{return err}
     if !r.exists("image",r.Image){return fmt.Errorf("image %s missing; run build --repo %s",r.Image,r.Repo)}
     for _,t:=range m.Tools {
+        if strings.Contains(t.Source,"setup-") && !map[string]bool{
+            "python":true,"java":m.Profile=="bookbuilder","typst":m.Profile=="bookbuilder",
+            "php":m.Profile=="bookbuilder","just":m.Profile=="bookbuilder",
+            "ffmpeg":m.Profile=="bookbuilder","fontconfig":m.Profile=="bookbuilder",
+            "docker":true,"node":false,"go":false,"ruby":false,
+        }[t.Name] {
+            fmt.Printf("ACTION: %s %s (installed by workflow step %s)\n",t.Name,t.Version,t.Source)
+            continue
+        }
         check,ok:=supportedToolChecks[t.Name]
         if !ok{return fmt.Errorf("no doctor check defined for %s",t.Name)}
         // Version requirements are checked for the supported, pinned tools.
