@@ -97,7 +97,20 @@ func run(args []string, executable, cwd string) error {
 	}
 
 	switch action {
-	case "list-installed":
+	case "requirements":
+        repo,output,err:=parseRequirementsArgs(args[1:])
+        if err!=nil{return err}
+        return requirementsCommand(repo,output,env)
+    case "build", "doctor":
+        repo,rest,err:=requireRepo(args[1:])
+        if err!=nil{return err}
+        if err=noExtras(action,rest);err!=nil{return err}
+        if selectedBackend()!="docker"{return fmt.Errorf("%s currently requires RUNNER_BACKEND=docker",action)}
+        r,err:=newDockerRunner(repo,env)
+        if err!=nil{return err}
+        if action=="doctor"{return toolchainDoctor(r)}
+        return buildCommand(r)
+    case "list-installed":
 		repo, rest, err := repoOption(args[1:])
 		if err != nil {
 			return err
