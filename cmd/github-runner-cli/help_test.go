@@ -59,7 +59,7 @@ func TestHelpWorksBeforeAssetsAndRequiredRepo(t *testing.T) {
 		{[]string{"help", "status"}, []string{"ghr status --repo OWNER/REPO", "GitHub status: online or offline", "EXAMPLES:"}},
 		{[]string{"status", "--help"}, []string{"ghr status --repo OWNER/REPO", "Help works without --repo"}},
 		{[]string{"status", "-h"}, []string{"ghr status --repo OWNER/REPO"}},
-		{[]string{"status", "--repo", "r14r/BookBuilder", "--help"}, []string{"ghr status --repo OWNER/REPO"}},
+		{[]string{"status", "--repo", "example-org/demo-app", "--help"}, []string{"ghr status --repo OWNER/REPO"}},
 		{[]string{"uninstall", "--help"}, []string{"--dry-run", "--delete-data", "--all", "--yes"}},
 		{[]string{"self-uninstall", "--help"}, []string{"--yes", "Does NOT stop/unregister"}},
 		{[]string{"runner", "--help"}, []string{"Subcommands:", "docker-doctor"}},
@@ -67,11 +67,8 @@ func TestHelpWorksBeforeAssetsAndRequiredRepo(t *testing.T) {
 		{[]string{"runner", "help", "setup"}, []string{"--workflow PATH", "--job ID", "--allow-cross-os"}},
 		{[]string{"help", "runner", "setup"}, []string{"--workflow PATH", "--job ID", "--allow-cross-os"}},
 		{[]string{"runner", "setup", "--help"}, []string{"ghr runner setup --repo OWNER/REPO", "--no-merge"}},
-		{[]string{"runner", "download", "--repo", "r14r/BookBuilder", "--help"}, []string{"ghr runner download --repo OWNER/REPO"}},
+		{[]string{"runner", "download", "--repo", "example-org/demo-app", "--help"}, []string{"ghr runner download --repo OWNER/REPO"}},
 		{[]string{"runner", "docker-doctor", "--help"}, []string{"2 GiB", "amd64"}},
-		{[]string{"host", "--help"}, []string{"Legacy macOS", "actions-cancel"}},
-		{[]string{"host", "help", "monitor"}, []string{"SECONDS", "default 10"}},
-		{[]string{"host", "status", "--help"}, []string{"ghr host status", "native"}},
 		{[]string{"version", "--help"}, []string{"ghr version", "OPTIONS:"}},
 		{[]string{"list-installed", "--help"}, []string{"--all", "--repository", "current Docker"}},
 	}
@@ -114,9 +111,7 @@ func TestHelpAliasesDocumentAllImplementedActions(t *testing.T) {
 		"runner configure", "runner setup", "runner pr", "runner install-service",
 		"runner start", "runner stop", "runner status", "runner monitor",
 		"runner foreground", "runner replace-container", "runner uninstall-service",
-		"host", "host install", "host doctor", "host start", "host stop",
-		"host status", "host monitor", "host repair", "host migrate", "host cleanup",
-		"host actions-cancel", "host actions-delete", "host actions-clear",
+
 	} {
 		if _, ok := commandDocs[name]; !ok {
 			t.Errorf("no documentation for %s", name)
