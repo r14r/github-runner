@@ -15,10 +15,10 @@ func TestRepoFlagsAndAliases(t *testing.T) {
 		repo  string
 		extra []string
 	}{
-		{[]string{"--repo", "r14r/BookBuilder"}, "r14r/BookBuilder", []string{}},
-		{[]string{"--repository", "r14r/BookBuilder", "--allow-public"}, "r14r/BookBuilder", []string{"--allow-public"}},
-		{[]string{"--repo=r14r/BookBuilder", "--name", "one"}, "r14r/BookBuilder", []string{"--name", "one"}},
-		{[]string{"--name", "one", "--repository=https://github.com/r14r/BookBuilder.git"}, "r14r/BookBuilder", []string{"--name", "one"}},
+		{[]string{"--repo", "example-org/demo-app"}, "example-org/demo-app", []string{}},
+		{[]string{"--repository", "example-org/demo-app", "--allow-public"}, "example-org/demo-app", []string{"--allow-public"}},
+		{[]string{"--repo=example-org/demo-app", "--name", "one"}, "example-org/demo-app", []string{"--name", "one"}},
+		{[]string{"--name", "one", "--repository=https://github.com/example-org/demo-app.git"}, "example-org/demo-app", []string{"--name", "one"}},
 	}
 	for _, tt := range cases {
 		repo, extra, err := requireRepo(tt.args)
@@ -29,8 +29,8 @@ func TestRepoFlagsAndAliases(t *testing.T) {
 }
 func TestMissingInvalidDuplicateRepoFlags(t *testing.T) {
 	cases := [][]string{
-		nil, {"r14r/BookBuilder"}, {"--repo"}, {"--repo="}, {"--repo", "wrong"},
-		{"--repo", "r14r/BookBuilder", "--repository", "r14r/github-runner-test"},
+		nil, {"example-org/demo-app"}, {"--repo"}, {"--repo="}, {"--repo", "wrong"},
+		{"--repo", "example-org/demo-app", "--repository", "sample-org/second-app"},
 		{"--repository", "-bad"}, {"--repo", "owner/repo/extra"},
 	}
 	for _, args := range cases {
@@ -44,8 +44,8 @@ func TestUninstallSafeguards(t *testing.T) {
 		repo string
 		args []string
 	}{
-		{"", nil}, {"", []string{"--all"}}, {"r14r/BookBuilder", []string{"--all", "--yes"}},
-		{"r14r/BookBuilder", []string{"--other"}}, {"", []string{"--delete-data"}},
+		{"", nil}, {"", []string{"--all"}}, {"example-org/demo-app", []string{"--all", "--yes"}},
+		{"example-org/demo-app", []string{"--other"}}, {"", []string{"--delete-data"}},
 	}
 	for _, tt := range invalid {
 		if _, err := parseUninstall(tt.repo, tt.args); err == nil {
@@ -57,8 +57,8 @@ func TestUninstallSafeguards(t *testing.T) {
 		args        []string
 		all, delete bool
 	}{
-		{"r14r/BookBuilder", nil, false, false},
-		{"r14r/BookBuilder", []string{"--delete-data"}, false, true},
+		{"example-org/demo-app", nil, false, false},
+		{"example-org/demo-app", []string{"--delete-data"}, false, true},
 		{"", []string{"--all", "--yes"}, true, false},
 		{"", []string{"--all", "--yes", "--delete-data"}, true, true},
 		{"", []string{"--all", "--dry-run"}, true, false},
@@ -71,7 +71,7 @@ func TestUninstallSafeguards(t *testing.T) {
 	}
 }
 func TestMatchingRunnerIdentityRequiresExactID(t *testing.T) {
-	rec := []runnerRecord{{ID: 42, Name: "imac-r14r-bookbuilder", Status: "online", Busy: false}}
+	rec := []runnerRecord{{ID: 42, Name: "imac-example-org-demo-app", Status: "online", Busy: false}}
 	r, err := matchedRegistration(runnerIdentity{AgentID: 42, AgentName: rec[0].Name}, rec)
 	if err != nil || r == nil || r.ID != 42 {
 		t.Fatalf("match: %+v %v", r, err)
@@ -141,12 +141,12 @@ func TestSelfUninstallRefusesSymlink(t *testing.T) {
 func TestNewCLIMustRejectPositionalRepo(t *testing.T) {
 	root := testAssets(t)
 	for _, args := range [][]string{
-		{"install", "r14r/BookBuilder"}, {"start", "r14r/BookBuilder"},
-		{"status", "r14r/BookBuilder"}, {"monitor", "r14r/BookBuilder"},
-		{"runner", "download", "r14r/BookBuilder"},
-		{"runner", "setup", "r14r/BookBuilder", "--job", "ci"},
-		{"uninstall", "r14r/BookBuilder"},
-		{"list-installed", "r14r/BookBuilder"},
+		{"install", "example-org/demo-app"}, {"start", "example-org/demo-app"},
+		{"status", "example-org/demo-app"}, {"monitor", "example-org/demo-app"},
+		{"runner", "download", "example-org/demo-app"},
+		{"runner", "setup", "example-org/demo-app", "--job", "ci"},
+		{"uninstall", "example-org/demo-app"},
+		{"list-installed", "example-org/demo-app"},
 	} {
 		if err := run(args, filepath.Join(root, "github-runner-cli"), root); err == nil {
 			t.Errorf("accepted positional repository %v", args)
@@ -154,11 +154,11 @@ func TestNewCLIMustRejectPositionalRepo(t *testing.T) {
 	}
 }
 func TestSetupRepoFlag(t *testing.T) {
-	o, err := parseSetup([]string{"--repository", "r14r/BookBuilder", "--workflow", ".github/workflows/ci.yml", "--job", "python", "--allow-public"})
-	if err != nil || o.repo != "r14r/BookBuilder" || len(o.workflows) != 1 || o.jobs[0] != "python" || !o.allowPublic {
+	o, err := parseSetup([]string{"--repository", "example-org/demo-app", "--workflow", ".github/workflows/ci.yml", "--job", "python", "--allow-public"})
+	if err != nil || o.repo != "example-org/demo-app" || len(o.workflows) != 1 || o.jobs[0] != "python" || !o.allowPublic {
 		t.Fatalf("parseSetup: %+v %v", o, err)
 	}
-	if _, err := parseSetup([]string{"r14r/BookBuilder", "--job", "ci"}); err == nil {
+	if _, err := parseSetup([]string{"example-org/demo-app", "--job", "ci"}); err == nil {
 		t.Fatal("positional setup repository accepted")
 	}
 }
@@ -166,11 +166,11 @@ func TestDockerNamingAndExactScope(t *testing.T) {
 	if !strings.HasPrefix(runnerContainerPrefix, "github-runner-") {
 		t.Fatal("wrong container prefix")
 	}
-	r, err := newDockerRunner("r14r/BookBuilder", t.TempDir())
+	r, err := newDockerRunner("example-org/demo-app", t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Container != "github-runner-r14r-bookbuilder" || r.Volume != "github-runner-r14r-bookbuilder-state" {
+	if r.Container != "github-runner-example-org-demo-app" || r.Volume != "github-runner-example-org-demo-app-state" {
 		t.Fatalf("existing Docker names changed: %+v", r)
 	}
 }
