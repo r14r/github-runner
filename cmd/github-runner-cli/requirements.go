@@ -247,25 +247,6 @@ func inspectWorkflowDirectory(repo, root, revision, profile, image string) (tool
 		manifest.Workflows = append(manifest.Workflows, rel)
 		analyzeWorkflowText(rel, string(data), tools, actions, &manifest.Warnings)
 	}
-	// The BookBuilder image profile defines additional preinstalled host tools
-	// enforced by its pinned doctor. These are NOT inferred from a workflow's
-	// arbitrary run scripts or falsely attributed to setup actions.
-	if profile == "bookbuilder" {
-		for _, tool := range []toolRequirement{
-			{"just", "1.58.0", "runner profile: bookbuilder"},
-			{"ffmpeg", "", "runner profile: bookbuilder"},
-			{"fontconfig", "", "runner profile: bookbuilder"},
-			{"php", "8.2", "runner profile: bookbuilder"},
-			{"java", "21", "runner profile: bookbuilder"},
-			{"typst", "0.15.1", "runner profile: bookbuilder"},
-			{"python", "3.12", "runner profile: bookbuilder"},
-		} {
-			if old, ok := tools[tool.Name]; ok && old.Version != "" && tool.Version != "" && old.Version != tool.Version {
-				manifest.Warnings = append(manifest.Warnings, "workflow requests "+tool.Name+" "+old.Version+" but bookbuilder profile pins "+tool.Version)
-			}
-			tools[tool.Name] = tool
-		}
-	}
 	for a := range actions {
 		manifest.Actions = append(manifest.Actions, a)
 	}
@@ -398,35 +379,83 @@ func requirementsCommand(repo string, output string, assets string) error {
 	}
 	return nil
 }
-func validateProfile(m toolchainManifest) error {
-	knownVersions := map[string]map[string]string{
-		"runner-base": {"python": "3.12"},
-		"bookbuilder": {"python": "3.12", "java": "21", "typst": "0.15.1", "php": "8.2", "just": "1.58.0"},
-	}
-	available := map[string]map[string]bool{
-		"runner-base": {"python": true, "docker": true, "node": true},
-		"bookbuilder": {"python": true, "docker": true, "node": true, "java": true, "typst": true, "php": true, "just": true, "ffmpeg": true, "fontconfig": true},
-	}
-	for _, t := range m.Tools {
-		if !available[m.Profile][t.Name] && strings.Contains(t.Source, "setup-") {
-			// Official setup actions provision their own runtime at job time.
-			continue
-		}
-		if !available[m.Profile][t.Name] {
-			return fmt.Errorf("runner profile %s does not include required tool %s (%s); select an appropriate RUNNER_PROFILE or extend the Dockerfile", m.Profile, t.Name, t.Source)
-		}
-		if pin := knownVersions[m.Profile][t.Name]; pin != "" && t.Version != "" && pin != t.Version {
-			return fmt.Errorf("runner profile %s provides %s %s, but workflows require %s", m.Profile, t.Name, pin, t.Version)
-		}
-	}
-	if len(m.Warnings) > 0 {
-		return fmt.Errorf("%d unresolved workflow requirements; inspect 'requirements --repo %s' before building", len(m.Warnings), m.Repository)
-	}
-	return nil
+// Image build arguments are derived exclusively from a small, audited map of
+// packages. Never feed arbitrary YAML content directly into apt/dpkg or shell.
+func provisionArgs(m toolchainManifest) ([]string,error) {
+    if len(m.Warnings)>0 {
+        return nil,fmt.Errorf("%d unresolved workflow requirements; inspect 'requirements --repo %s'",len(m.Warnings),m.Repository)
+    }
+    packages:=map[string]bool{}
+    just,typst:=false,false
+    for _,t:=range m.Tools {
+        if toolManagedByWorkflow(t) {continue}
+        switch t.Name{
+        case "python":
+            if t.Version!=""&&t.Version!="3.12" {return nil,fmt.Errorf("python %s requires actions/setup-python or a custom image",t.Version)}
+        case "docker":
+            // Docker CLI is part of runner-base. Socket access is separately opt-in.
+        case "ffmpeg":
+            packages["ffmpeg"]=true
+        case "fontconfig":
+            packages["fontconfig"]=true
+        case "java":
+            if t.Version!=""&&t.Version!="21" {return nil,fmt.Errorf("java %s unsupported in generic image; use actions/setup-java",t.Version)}
+            packages["openjdk-21-jre-headless"]=true
+        case "php":
+            if t.Version!=""&&t.Version!="8.3"{return nil,fmt.Errorf("php %s unsupported in Ubuntu 24.04 base; use a setup action or custom image",t.Version)}
+            packages["php-cli"]=true
+        case "just":
+            if t.Version!=""&&t.Version!="1.58.0"{return nil,fmt.Errorf("just %s unsupported; supported pinned release 1.58.0",t.Version)}
+            just=true
+        case "typst":
+            if t.Version!=""&&t.Version!="0.15.1"{return nil,fmt.Errorf("typst %s unsupported; use typst-community/setup-typst",t.Version)}
+            typst=true
+        default:
+            return nil,fmt.Errorf("tool %s not provisioned automatically; add its setup action or extend the generic builder",t.Name)
+        }
+    }
+    names:=make([]string,0,len(packages))
+    for p:=range packages{names=append(names,p)}
+    sort.Strings(names)
+    flag:=func(name,value string)[]string{return []string{"--build-arg",name+"="+value}}
+    args:=flag("EXTRA_APT_PACKAGES",strings.Join(names," "))
+    if just{args=append(args,flag("INSTALL_JUST","1")...)}
+    if typst{args=append(args,flag("INSTALL_TYPST","1")...)}
+    return args,nil
 }
 
-// doctor checks installed image capabilities WITHOUT requiring a registered
-// runner, stopping an active service, or modifying GitHub registrations.
+func toolManagedByWorkflow(t toolRequirement)bool {
+    // Recognized setup actions provision language runtimes at workflow step
+    // execution time, not as part of the persistent Docker image.
+    return strings.Contains(t.Source,"setup-python@")||
+        strings.Contains(t.Source,"setup-java@")||
+        strings.Contains(t.Source,"setup-node@")||
+        strings.Contains(t.Source,"setup-go@")||
+        strings.Contains(t.Source,"setup-ruby@")||
+        strings.Contains(t.Source,"setup-typst@")||
+        strings.Contains(t.Source,"setup-php@")
+}
+
+func toolchainBuildArgs(m toolchainManifest)([]string,error){
+    if m.Profile=="runner-base"{
+        for _,t:=range m.Tools {
+            if toolManagedByWorkflow(t){continue}
+            if t.Name!="python"&&t.Name!="docker"{
+                return nil,fmt.Errorf("runner-base does not provide %s; use RUNNER_PROFILE=toolchain",t.Name)
+            }
+        }
+        if len(m.Warnings)>0{return nil,fmt.Errorf("%d unresolved workflow requirements",len(m.Warnings))}
+        return nil,nil
+    }
+    if m.Profile!="toolchain"{return nil,fmt.Errorf("unsupported image profile %q",m.Profile)}
+    return provisionArgs(m)
+}
+
+func validateProfile(m toolchainManifest)error{
+    _,err:=toolchainBuildArgs(m)
+    return err
+}
+
 // doctor is a read-only image check; actions that provision their own
 // runtimes are listed as workflow-managed, not misreported as host tools.
 func toolchainDoctor(r dockerRunner) error {
@@ -445,12 +474,7 @@ func toolchainDoctor(r dockerRunner) error {
     fmt.Fprintln(os.Stdout, "\n04: Check toolchain")
     checked,managed:=0,0
     for _,t:=range m.Tools {
-        if strings.Contains(t.Source,"setup-") && !map[string]bool{
-            "python":true, "java":m.Profile=="bookbuilder", "typst":m.Profile=="bookbuilder",
-            "php":m.Profile=="bookbuilder","just":m.Profile=="bookbuilder",
-            "ffmpeg":m.Profile=="bookbuilder","fontconfig":m.Profile=="bookbuilder",
-            "docker":true, "node":false,"go":false,"ruby":false,
-        }[t.Name] {
+        if toolManagedByWorkflow(t) {
             fmt.Fprintln(os.Stdout, toolStatusLine(t.Name,t.Version,"WORKFLOW ACTION"))
             managed++
             continue
