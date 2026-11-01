@@ -1,57 +1,29 @@
 # Changelog
 
-## 0.4.0 — Workflow requirements and non-mutating CI
+## 0.5.0 — Repository-neutral toolchain and readable diagnostics
 
-- Add `requirements --repo OWNER/REPO` to analyze workflow actions and pinned
-  languages/tools without executing workflow code.
-- Add `requirements --repo OWNER/REPO --output toolchain.yaml` to export a
-  versioned YAML manifest with revision, source and warnings.
-- Add `build --repo OWNER/REPO` to verify profile compatibility and prepare
-  the Docker image; unsupported toolchains require explicit support.
-- Add `doctor --repo OWNER/REPO` to check the image toolchain without
-  registering, starting or stopping a runner.
-- Preserve `start --repo OWNER/REPO` and explicit GitHub registration.
-- `just ci` and GitHub Actions now use read-only Go format checks;
-  `just fmt` remains an explicit opt-in, with sources normalized.
-- Add unit tests for manifests, toolchain versions and unsupported actions.
+- Remove hardcoded external target repositories from CLI, test fixtures,
+  Docker image stages, workflow CI and documentation.
+- Remove legacy application-specific host provisioning scripts, profiles,
+  workflow checkouts and obsolete historical architecture notes.
+- Give every repository an isolated `toolchain` Docker image tag by default.
+- Derive image dependencies from workflow actions and audited package maps,
+  distinguishing `WORKFLOW ACTION` from image-preinstalled tools.
+- Format `ghr doctor` as numbered stages with explicit repository/revision,
+  clear per-tool `OK`/`FAIL` status, and a concise result summary.
+- Hide routine Git sparse-clone transfer output, retaining diagnostics on
+  failure.
+- Preserve existing Docker registrations and volumes; do not perform any
+  registration-changing migration automatically.
+- Keep `just ci` read-only for Go source files.
 
-## 0.3.2 — Detailed built-in command help
+## 0.4.0 — Workflow requirements
 
-- Add `ghr help`, `ghr help COMMAND`, `ghr help runner SUBCOMMAND`,
-  `ghr help host SUBCOMMAND` and `--help` / `-h` at every command level.
-- Document purpose, required/optional parameters, permitted values, examples,
-  environment overrides and safety warnings for each implemented command.
-- Process help requests before `--repo` validation and runtime asset checks,
-  allowing `ghr status --help` without installing/configuring a runner.
-- Add Go regression tests for all help topics, aliases, no-assets behavior,
-  and unknown commands.
+- Add Go workflow-analysis and YAML manifest export.
+- Add generic `requirements`, `build` and `doctor` command structure.
 
-## 0.3.0 — Native Go Docker lifecycle and workflow migration (2026-10-31)
+## 0.3.x — CLI and lifecycle
 
-- Remove all Python project files and pytest dependency from CI and install.
-- Port conservative workflow patching, validation and PR creation to Go.
-- Move repository-scoped Docker/Colima download, registration, status, monitoring,
-  image selection and container refresh to Go.
-- Retain safely isolated macOS/Ubuntu host service scripts as runtime
-  compatibility assets; no runner registrations or Docker volumes are migrated.
-- Replace Python regression tests with Go unit and race tests.
-- Simplify `just bootstrap`, `just ci`, `just build`, and `just install`.
-- Verify these recipes on GitHub Actions using a pinned just binary and continue
-  building and verifying the BookBuilder Docker image in CI.
-
-## 0.1.2 — Multi-repository Docker/Colima runner extension (2026-10-31)
-
-- Add repository-scoped Linux x64 runners for older Intel macOS via Colima/Docker.
-- Support multiple repositories with isolated runner names and persistent volumes.
-- Verify SHA-256 for runner 2.338.1 assets; obtain fresh registration tokens using gh.
-- Add conservative workflow migration via PR; do not automatically merge by default.
-- Keep the Colima Docker socket opt-in and protect public-repository registration.
-- Add nine workflow patching regression tests, shell syntax gate and just commands.
-- Preserve existing native macOS/Ubuntu installations, registrations and service recipes.
-
-## 0.1.0 — Standalone GitHub Actions runner management (2026-10-25)
-
-- Extract macOS and Ubuntu BookBuilder runner provisioning, read-only doctors, service lifecycle, log cleanup and safe GitHub Actions history controls into this own repository.
-- Keep default `RUNNER_REPO=r14r/BookBuilder-with-typst` and label `bookbuilder`, allow optional repository and label overrides.
-- Add explicit `just migrate-from-bookbuilder <absolute-old-runner-dir>` to preserve existing macOS registration/launchd identity when relocating from the BookBuilder checkout.
-- Provide shell syntax and mocked regression tests. CI and live host acceptance are independent validation steps.
+- Add detailed command help, `--repo` aliases and safe list/uninstall
+  operations.
+- Migrate Docker lifecycle and workflow patching to Go.
