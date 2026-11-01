@@ -16,7 +16,12 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Check Go formatting (read-only)
-        run: test -z "$(gofmt -l ./cmd ./internal)"
+        run: |
+          unformatted="$(gofmt -l ./cmd ./internal)"
+          if [ -n "$unformatted" ]; then
+            printf 'Unformatted Go files:\n%s\n' "$unformatted" >&2
+            exit 1
+          fi
       - name: Go vet and race tests
         run: |
           go vet ./...
