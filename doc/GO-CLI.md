@@ -1,4 +1,4 @@
-# Go CLI v0.5.0 — repository-neutral runner manager
+# Go CLI v0.5.1 — repository-neutral runner manager
 
 ## Typical workflow
 
@@ -27,6 +27,23 @@ A runtime provided by a recognized setup action is marked
 doctor checks availability and supported pinned versions inside the exact
 built image. Unknown/dynamic tools require a setup action or explicitly
 provided custom image; they are never passed blindly to a shell.
+
+## Automatic safe refresh
+
+```sh
+ghr build --repo OWNER/REPO
+ghr doctor --repo OWNER/REPO
+ghr refresh --repo OWNER/REPO
+ghr status --repo OWNER/REPO
+```
+
+For a running container, `refresh` verifies the persisted runner ID/name
+against GitHub, checks `busy=false`, then executes **stop → replace → start**.
+A stopped container is replaced without being started. Unknown runner
+identity, GitHub API unavailability or a busy registration aborts before
+stopping. An existing privileged Docker socket is preserved only when
+`RUNNER_DOCKER_SOCKET=1` is explicitly set. The GitHub registration
+and persistent Docker volume are never removed by refresh.
 
 ## Runner state and compatibility
 

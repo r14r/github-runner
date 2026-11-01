@@ -5,7 +5,7 @@ repository-scoped, Docker/Colima-backed GitHub Actions runners without
 application-specific profiles, hardcoded repository names or workflow
 dependencies on the manager repository.
 
-Current version: **0.5.0**.
+Current version: **0.5.1**.
 
 ## Install
 
@@ -101,7 +101,8 @@ For a runner installed with an older application-specific image, the
 registration volume is **not** deleted by this refactor. Its new default
 image tag differs; rebuild and explicitly refresh a **stopped, idle** runner
 before restarting, or set `RUNNER_IMAGE` to the compatible existing image.
-Do not refresh a running runner.
+
+`ghr refresh --repo OWNER/REPO` automatically stops, replaces and restarts a **running, idle** runner, preserving its GitHub registration and Docker volume. If the container was already stopped, it remains stopped after refresh. A busy runner, a GitHub API error or an unverifiable runner identity causes refresh to abort without stopping anything. A Docker socket mount requires explicit `RUNNER_DOCKER_SOCKET=1` before any stop. On failure, the CLI reports the recovery action; it never deletes registration data.
 
 ## Workflow routing
 
