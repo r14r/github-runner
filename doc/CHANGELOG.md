@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.2 — Live streaming monitor
+
+- `ghr monitor --repo OWNER/REPO` displays status and recent GitHub runs once,
+  then follows new Docker container log lines continuously.
+- Replace repeated polling/log-tail dumps with `docker logs --follow --tail N`.
+- Add `RUNNER_MONITOR_TAIL` (0–1000, default 8); `0` shows only new output.
+- Retire the old `RUNNER_MONITOR_SECONDS` polling option.
+- Add Go regression tests for one-shot snapshots, continuous follow,
+  tail validation and error propagation.
+
+
 ## 0.5.1 — Safe automatic runner refresh
 
 - `ghr refresh --repo OWNER/REPO` now stops, replaces and restarts an already-running **idle** runner automatically.
