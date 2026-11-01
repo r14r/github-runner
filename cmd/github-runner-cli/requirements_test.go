@@ -28,6 +28,10 @@ jobs:
         with:
           java-version: '21'
           distribution: temurin
+      - name: Install Typst
+        uses: typst-community/setup-typst@v5.3.0
+        with:
+          typst-version: '0.15.1'
       - name: build
         run: |
           just ci
@@ -60,7 +64,7 @@ jobs:
 	if len(m.Workflows) != 2 {
 		t.Errorf("workflows: %#v", m.Workflows)
 	}
-	for _, want := range []string{"actions/checkout@v7", "actions/setup-java@v6", "ruby/setup-ruby@v1"} {
+	for _, want := range []string{"actions/checkout@v7", "actions/setup-java@v6", "ruby/setup-ruby@v1", "typst-community/setup-typst@v5.3.0"} {
 		if !containsString(m.Actions, want) {
 			t.Errorf("action %s missing: %v", want, m.Actions)
 		}
