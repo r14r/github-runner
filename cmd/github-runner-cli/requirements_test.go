@@ -57,7 +57,7 @@ jobs:
 			t.Fatal(err)
 		}
 	}
-	m, err := inspectWorkflowDirectory("r14r/BookBuilder", root, "abcdef", "bookbuilder", "test:tag")
+	m, err := inspectWorkflowDirectory("example-org/demo-app", root, "abcdef", "toolchain", "test:tag")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,17 +73,17 @@ jobs:
 	for _, tool := range m.Tools {
 		versions[tool.Name] = tool.Version
 	}
-	for name, want := range map[string]string{"python": "3.12", "java": "21", "typst": "0.15.1", "php": "8.2", "just": "1.58.0", "ruby": "3.3"} {
+	for name, want := range map[string]string{"python": "3.12", "java": "21", "typst": "0.15.1", "php": "", "just": "", "ruby": "3.3"} {
 		if versions[name] != want {
 			t.Errorf("%s version: got %q expected %q", name, versions[name], want)
 		}
 	}
 	if err := validateProfile(m); err != nil {
-		t.Errorf("Ruby should be provisioned by setup-ruby: %v", err)
+		t.Errorf("Setup actions should provision their own runtimes: %v", err)
 	}
 	manifest := string(yamlManifest(m))
 	for _, want := range []string{
-		"schema_version: 1", `repository: "r14r/BookBuilder"`,
+		"schema_version: 1", `repository: "example-org/demo-app"`,
 		`revision: "abcdef"`, `name: "ruby"`,
 		`version: "3.3"`, `"actions/checkout@v7"`,
 	} {
@@ -101,13 +101,13 @@ func containsString(xs []string, s string) bool {
 	return false
 }
 func TestRequirementsOutputAndMissingFlags(t *testing.T) {
-	for _, args := range [][]string{nil, {"--output", "toolchain.yaml"}, {"--repo"}, {"--repo", "r14r/BookBuilder", "--output"}, {"--repo", "r14r/BookBuilder", "--unknown"}, {"--repo", "r14r/BookBuilder", "--output", "a", "--output", "b"}} {
+	for _, args := range [][]string{nil, {"--output", "toolchain.yaml"}, {"--repo"}, {"--repo", "example-org/demo-app", "--output"}, {"--repo", "example-org/demo-app", "--unknown"}, {"--repo", "example-org/demo-app", "--output", "a", "--output", "b"}} {
 		if _, _, err := parseRequirementsArgs(args); err == nil {
 			t.Errorf("accepted %q", args)
 		}
 	}
-	repo, out, err := parseRequirementsArgs([]string{"--output", "toolchain.yaml", "--repository", "r14r/BookBuilder"})
-	if err != nil || repo != "r14r/BookBuilder" || out != "toolchain.yaml" {
+	repo, out, err := parseRequirementsArgs([]string{"--output", "toolchain.yaml", "--repository", "example-org/demo-app"})
+	if err != nil || repo != "example-org/demo-app" || out != "toolchain.yaml" {
 		t.Fatalf("%s %s %v", repo, out, err)
 	}
 	dir := t.TempDir()
@@ -143,7 +143,7 @@ func TestRequirementsRejectsDynamicVersionAndUnknownAction(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "ci.yml"), []byte(data), 0644); err != nil {
 		t.Fatal(err)
 	}
-	m, err := inspectWorkflowDirectory("r14r/test", root, "abc", "runner-base", "runner:test")
+	m, err := inspectWorkflowDirectory("example-org/test", root, "abc", "toolchain", "runner:test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,17 +155,17 @@ func TestRequirementsRejectsDynamicVersionAndUnknownAction(t *testing.T) {
 	}
 }
 func TestRequirementsNoWorkflows(t *testing.T) {
-	_, err := inspectWorkflowDirectory("r14r/example", t.TempDir(), "abc", "runner-base", "test")
+	_, err := inspectWorkflowDirectory("example-org/example", t.TempDir(), "abc", "runner-base", "test")
 	if err == nil {
 		t.Fatal("missing workflows unexpectedly passed")
 	}
 }
 func TestRequirementsProfileRejectsUnsupportedHostTool(t *testing.T) {
-	m := toolchainManifest{Repository: "r14r/test", Profile: "runner-base", Tools: []toolRequirement{
+	m := toolchainManifest{Repository: "example-org/test", Profile: "runner-base", Tools: []toolRequirement{
 		{Name: "java", Version: "21", Source: ".github/workflows/test.yml: run command"},
 	}}
 	if err := validateProfile(m); err == nil {
-		t.Fatal("generic image lacks Java 21")
+		t.Fatal("runner-base should reject Java 21")
 	}
 }
 func TestNewRequirementCommandsHaveHelpWithoutRepo(t *testing.T) {
@@ -190,4 +190,49 @@ func TestReadonlyCIRecipe(t *testing.T) {
 	if !strings.Contains(s, "ci: bootstrap fmt-check lint test") {
 		t.Fatal("ci must check formatting, not rewrite it")
 	}
+}
+
+func TestGenericToolchainPlannerAndActionProvisioning(t *testing.T) {
+    m:=toolchainManifest{Repository:"example-org/demo-app",Profile:"toolchain",
+        Tools:[]toolRequirement{
+            {Name:"ffmpeg",Source:".github/workflows/ci.yml: run command"},
+            {Name:"fontconfig",Source:".github/workflows/ci.yml: run command"},
+            {Name:"just",Version:"1.58.0",Source:".github/workflows/ci.yml: run command"},
+            {Name:"java",Version:"21",Source:".github/workflows/ci.yml: actions/setup-java@v6"},
+            {Name:"ruby",Version:"3.3",Source:".github/workflows/pages.yml: ruby/setup-ruby@v1"},
+            {Name:"typst",Version:"0.15.1",Source:".github/workflows/pdf.yml: typst-community/setup-typst@v5"},
+        }}
+    args,err:=toolchainBuildArgs(m)
+    if err!=nil{t.Fatal(err)}
+    joined:=strings.Join(args," ")
+    for _,want:=range []string{"EXTRA_APT_PACKAGES=ffmpeg fontconfig","INSTALL_JUST=1"}{
+        if !strings.Contains(joined,want){t.Errorf("missing %q from %q",want,joined)}
+    }
+    for _,no:=range []string{"openjdk","INSTALL_TYPST=1","ruby"}{
+        if strings.Contains(joined,no){t.Errorf("action-managed package %q incorrectly preinstalled: %q",no,joined)}
+    }
+}
+func TestToolchainPlannerRefusesUnsupportedVersion(t *testing.T) {
+    m:=toolchainManifest{Repository:"example-org/demo-app",Profile:"toolchain",
+        Tools:[]toolRequirement{{Name:"php",Version:"8.2",Source:"workflow run command"}}}
+    if _,err:=toolchainBuildArgs(m);err==nil{t.Fatal("unsupported PHP version accepted")}
+    m.Tools[0].Source=".github/workflows/ci.yml: shivammathur/setup-php@v2"
+    if _,err:=toolchainBuildArgs(m);err!=nil{t.Fatal("official setup action should be allowed:",err)}
+}
+func TestDoctorStatusLineFormatting(t *testing.T){
+    for _,tc:=range []struct{name,version,status,want string}{
+        {"ffmpeg","","OK","- ffmpeg:"},
+        {"java","21","OK","- java (21):"},
+        {"ruby","3.3","WORKFLOW ACTION","- ruby (3.3):"},
+    }{
+        line:=toolStatusLine(tc.name,tc.version,tc.status)
+        if !strings.Contains(line,tc.want)||!strings.HasSuffix(line,tc.status){
+            t.Errorf("unexpected doctor row %q",line)
+        }
+    }
+}
+func TestQuietGitCapturesFailureOnly(t *testing.T){
+    if err:=capturedGit("","sh","-c","printf noisy-git-output >&2");err!=nil{t.Fatal(err)}
+    err:=capturedGit("","sh","-c","printf git-failed >&2; exit 12")
+    if err==nil||!strings.Contains(err.Error(),"git-failed"){t.Errorf("expected diagnostic error, got %v",err)}
 }
