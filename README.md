@@ -5,7 +5,7 @@ repository-scoped, Docker/Colima-backed GitHub Actions runners without
 application-specific profiles, hardcoded repository names or workflow
 dependencies on the manager repository.
 
-Current version: **0.5.2**.
+Current version: **0.5.3**.
 
 ## Install
 
@@ -119,6 +119,61 @@ image tag differs; rebuild and explicitly refresh a **stopped, idle** runner
 before restarting, or set `RUNNER_IMAGE` to the compatible existing image.
 
 `ghr refresh --repo OWNER/REPO` automatically stops, replaces and restarts a **running, idle** runner, preserving its GitHub registration and Docker volume. If the container was already stopped, it remains stopped after refresh. A busy runner, a GitHub API error or an unverifiable runner identity causes refresh to abort without stopping anything. A Docker socket mount requires explicit `RUNNER_DOCKER_SOCKET=1` before any stop. On failure, the CLI reports the recovery action; it never deletes registration data.
+
+## GitHub Actions workflow run management
+
+Use the `actions` subcommands to list, cancel, or delete workflow runs in an
+**explicitly selected repository**. These commands use the authenticated
+GitHub CLI and do not require Docker or installed runner runtime assets.
+
+```sh
+# List all runs or select one GitHub Actions state/conclusion.
+ghr actions list --repo OWNER/REPO
+ghr actions list --repo OWNER/REPO --state failure
+ghr actions list --repo OWNER/REPO --state in_progress
+
+# Dry-run is the default for cancel and delete:
+ghr actions cancel --repo OWNER/REPO --state in_progress
+ghr actions delete --repo OWNER/REPO --state failure
+ghr actions delete --repo OWNER/REPO --state all --with-cancel
+
+# Explicitly request destructive changes:
+ghr actions cancel --repo OWNER/REPO --state in_progress --yes
+ghr actions delete --repo OWNER/REPO --state failure --yes
+ghr actions delete --repo OWNER/REPO --state all --with-cancel --yes
+
+# Full documentation with all 15 possible filter values:
+ghr actions help
+ghr actions delete --help
+ghr actions delete help
+```
+
+`--yes` **requires an explicitly selected `--state`**, including
+`--state all` if you intend to modify every eligible run. `delete`
+only removes completed runs by default; active runs are skipped. Use
+`--with-cancel` to cancel matching active runs, wait for GitHub to report
+completion, then delete them. Run deletion is **irreversible**.
+Bulk selection is performed **server-side** with GitHub's REST `status=STATE`
+filter. If more than 1,000 matching runs exist (GitHub's search cap),
+the CLI divides the search into creation-time windows, retrieves and
+deduplicates every matching run, and only then begins deletions.
+Each run is rechecked before a destructive API request.
+
+GitHub GraphQL exposes read-only `WorkflowRun` objects but **does not
+offer a `deleteWorkflowRun` or batch cancellation mutation**.
+Deleting workflow runs therefore still requires the documented REST
+`DELETE /repos/OWNER/REPO/actions/runs/RUN_ID` endpoint per run.
+The CLI provides the requested bulk semantics even though GitHub itself
+does not offer a single bulk-deletion mutation. If GitHub cannot fully
+enumerate results, it fails before deleting any run. Invalid
+permissions, API errors and cancellation timeouts return a nonzero exit status.
+
+For the detailed state and conclusion descriptions, run
+`ghr actions --help`. Supported values:
+`all`, `success`, `failure`, `cancelled`, `timed_out`,
+`action_required`, `neutral`, `skipped`, `stale`,
+`completed`, `queued`, `in_progress`, `waiting`,
+`pending`, and `requested`.
 
 ## Workflow routing
 
