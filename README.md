@@ -5,7 +5,7 @@ repository-scoped, Docker/Colima-backed GitHub Actions runners without
 application-specific profiles, hardcoded repository names or workflow
 dependencies on the manager repository.
 
-Current version: **0.5.1**.
+Current version: **0.5.2**.
 
 ## Install
 
@@ -64,6 +64,22 @@ ghr status --repo OWNER/REPO
 ghr monitor --repo OWNER/REPO
 ghr stop --repo OWNER/REPO
 ```
+
+### Live log monitoring
+
+```sh
+# Behaves like tail -f: show 10 old log lines once, then only new ones.
+ghr monitor --repo OWNER/REPO
+
+# Show only new log lines, without existing history.
+RUNNER_MONITOR_TAIL=0 ghr monitor --repo OWNER/REPO
+```
+
+Monitor executes `docker logs --follow --tail N` for the selected
+runner container. It never prints the GitHub Actions run table or runner
+status and never reprints older log lines. `Ctrl+C` stops only the
+monitor process, not the runner. Use `ghr status` or `gh run list`
+separately when needed.
 
 Alternatively, `ghr install --repo OWNER/REPO [--allow-public]` builds,
 registers and creates a stopped container in one operation.

@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const dockerPlatform = "linux/amd64"
@@ -282,6 +281,9 @@ func (r dockerRunner) refresh() error {
 }
 
 func (r dockerRunner) action(action string) error {
+	if action == "monitor" {
+		return r.monitor()
+	}
 	if err := r.selectPlatform(); err != nil {
 		return err
 	}
@@ -327,25 +329,6 @@ func (r dockerRunner) action(action string) error {
 			fmt.Println("Docker container not installed:", r.Container)
 		}
 		return r.githubStatus()
-	case "monitor":
-		for {
-			fmt.Println("\n--- Runner status ---")
-			if err := r.action("status"); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-			}
-			fmt.Println("--- Recent GitHub Actions runs ---")
-			_ = commandRun("", "gh", "run", "list", "--repo", r.Repo, "--limit", "5")
-			_ = commandRun("", "docker", "logs", "--tail", "8", r.Container)
-			interval := 10
-			if value := os.Getenv("RUNNER_MONITOR_SECONDS"); value != "" {
-				n, e := strconv.Atoi(value)
-				if e != nil || n < 2 {
-					return errors.New("RUNNER_MONITOR_SECONDS must be integer >= 2")
-				}
-				interval = n
-			}
-			time.Sleep(time.Duration(interval) * time.Second)
-		}
 	case "foreground":
 		if !r.exists("container", r.Container) {
 			if err := r.createContainer(); err != nil {

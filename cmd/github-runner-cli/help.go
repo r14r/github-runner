@@ -97,13 +97,13 @@ var commandDocs = map[string]commandDoc{
 		Notes:       []string{"A configured runner and Docker daemon are required to retrieve status.", "Help works without --repo, Docker, or a configured registration."},
 	},
 	"monitor": {
-		Summary:     "Continuously display runner status, recent GitHub runs and container logs.",
-		Description: "Periodically refreshes local/GitHub runner status, recent workflow runs, and the tail of the Docker logs until interrupted.",
+		Summary:     "Follow the runner container log exactly like tail -f, without status or Actions tables.",
+		Description: "Runs docker logs --follow --tail N for the selected repository's Docker container. Prints the last 10 log lines once and then waits for new lines. It does not query GitHub, poll status, or repeat earlier logs.",
 		Usage:       []string{"ghr monitor --repo OWNER/REPO"},
 		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values:      []string{"RUNNER_MONITOR_SECONDS: integer >= 2; defaults to 10 seconds."},
-		Examples:    []string{"ghr monitor --repo example-org/demo-app", "RUNNER_MONITOR_SECONDS=5 ghr monitor --repo example-org/demo-app"},
-		Notes:       []string{"Ctrl+C stops monitoring, not the runner.", "Detailed step logs belong to GitHub Actions: gh run view RUN_ID --repo OWNER/REPO --log."},
+		Values:      []string{"RUNNER_MONITOR_TAIL: 0–1000 initial lines (default 10; use 0 for new lines only)."},
+		Examples:    []string{"ghr monitor --repo example-org/demo-app", "RUNNER_MONITOR_TAIL=0 ghr monitor --repo example-org/demo-app", "RUNNER_MONITOR_TAIL=30 ghr monitor --repo example-org/demo-app"},
+		Notes:       []string{"Only container logs are displayed; no runner status or GitHub Actions run list.", "Ctrl+C exits monitoring without stopping the runner.", "GitHub Actions job step logs are separate: gh run view RUN_ID --repo OWNER/REPO --log."},
 	},
 	"refresh": {
 		Summary:     "Replace the runner container and automatically restart it if it was running and idle.",
@@ -349,7 +349,7 @@ GLOBAL ENVIRONMENT:
   RUNNER_PROFILE            auto (default), generic, toolchain, runner-base
   RUNNER_IMAGE              Optional explicit Docker image tag
   RUNNER_DOCKER_SOCKET      0 (default), 1 (privileged opt-in)
-  RUNNER_MONITOR_SECONDS    Poll interval in seconds: integer >= 2; default 10
+  RUNNER_MONITOR_TAIL       Initial log lines: 0..1000 (default 10)
   GITHUB_RUNNER_CLI_ENV     Override installed runtime assets directory
 
 GETTING STARTED:
