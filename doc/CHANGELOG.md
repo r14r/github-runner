@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.3 — GitHub Actions workflow run management
+## 0.5.3 — GitHub Actions workflow run management and bulk cleanup
 
 - Add `ghr actions list|cancel|delete --repo OWNER/REPO` with
   `--state`, `--yes` and delete-only `--with-cancel`.
@@ -10,8 +10,13 @@
   `--yes --state STATE`, preventing unintended bulk changes.
 - Implement `delete --with-cancel` with cancellation, bounded wait
   until GitHub reports `completed`, and then deletion.
-- Gather run pages before mutations and verify individual run status
-  before making API changes. No dependency on installed Docker runtime.
+- Use GitHub's REST `status=STATE` filter for server-side bulk
+  selection (e.g. `--state failure`); partition creation-time ranges
+  when the GitHub 1,000-result search cap applies.
+- Gather all matching run IDs before mutations and verify individual run status
+  before making API changes. Fail without changes if the snapshot is incomplete.
+- GitHub GraphQL lacks a workflow-run deletion mutation, so actual
+  deletions use the documented REST endpoint per run. No dependency on installed Docker runtime.
 - Extend detailed help for `actions`, each subcommand and the complete
   table of states; accept `ghr actions delete help`.
 - Add regression tests for filtering, dry-runs, cancellation,
