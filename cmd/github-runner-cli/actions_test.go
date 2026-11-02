@@ -424,8 +424,8 @@ func TestFilteredSearchPartitionsOverThousandRunGitHubCap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(runs) != 2 || len(endpoints) != 3 {
-		t.Errorf("expected 2 shards and 2 runs, got %d and %v", len(runs), endpoints)
+	if len(runs) != 2 || len(endpoints) != 4 {
+		t.Errorf("expected initial query, capped range, 2 shards and 2 runs, got %d and %v", len(runs), endpoints)
 	}
 	for _, endpoint := range endpoints[1:] {
 		if !strings.Contains(endpoint, "created=") {
