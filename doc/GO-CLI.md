@@ -92,7 +92,17 @@ It also accepts `all` to match everything. Use
 `delete --with-cancel` requests cancellation of matching active runs,
 waits for confirmation of completion (up to one minute), and only then
 deletes them. The GitHub run is rechecked before every destructive request;
-pagination is completed before deletion to avoid skipped runs. Failed
+all matching run IDs are gathered before deletion to avoid skipped runs.
+GitHub's REST API supports a server-side `status=STATE` filter
+that limits each filtered search to 1,000 results. The CLI partitions
+large searches by creation timestamp to cover all available results
+before making changes; it refuses deletion if it cannot fully
+enumerate the matching set.
+
+The GitHub GraphQL schema includes `WorkflowRun` but no
+`deleteWorkflowRun` mutation. Bulk selection uses REST filtering,
+and each deletion is an individual REST operation; a single
+GraphQL bulk delete cannot be implemented with the current GitHub API. Failed
 GitHub API requests stop the operation. Run deletion cannot be undone.
 
 ## Runner state and compatibility
