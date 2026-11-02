@@ -51,9 +51,10 @@ func TestFullDoctorSixChecksPass(t *testing.T) {
 		t.Fatalf("check order %v, expected %v", calls, expected)
 	}
 	for _, heading := range []string{
-		"01: Check local Docker", "02: Check image and toolchain", "03: Check local runner registration",
-		"04: Check GitHub runner status", "05: Check all workflow", "06: Check RUNNER_LABELS_JSON",
+		"01", "Docker container", "02", "Image and toolchain", "03", "Local runner registration",
+		"04", "GitHub runner status", "05", "Workflow runner selectors", "06", "RUNNER_LABELS_JSON",
 		"RESULT: PASS — all 6 checks OK",
+	}
 	} {
 		if !strings.Contains(output.String(), heading) {
 			t.Errorf("missing %q in %q", heading, output.String())
@@ -237,4 +238,96 @@ func Example_validateDoctorRunnerVariable() {
 	err := validateDoctorRunnerVariable(`["self-hosted","Linux","X64","repo-example-org-demo"]`, "example-org-demo")
 	fmt.Println(err == nil)
 	// Output: true
+}
+
+func TestDoctorCompactLayoutNoHeadingOrNestedOutput(t *testing.T) {
+	var out bytes.Buffer
+	calls := []string{}
+	checks := fakeFullDoctor("", &calls)
+	checks.container = func(w io.Writer) error {
+		fmt.Fprintln(w, "    Container: github-runner-example")
+		fmt.Fprintln(w, "    State:     running")
+		fmt.Fprintln(w, "    Image:     example:latest (matches running container)")
+		return nil
+	}
+	checks.toolchain = func(w io.Writer) error {
+		fmt.Fprintln(w, "GitHub Runner — Toolchain Doctor")
+		fmt.Fprintln(w, "01: Clone repository")
+		fmt.Fprintln(w, "    Workflows:  6")
+		fmt.Fprintln(w, "    Actions:    10")
+		fmt.Fprintln(w, "    Tools:      4")
+		fmt.Fprintln(w, "RESULT: PASS — 0 tools verified in image, 4 provided by workflow actions")
+		fmt.Fprintln(w, "Repository: example-org/demo")
+		fmt.Fprintln(w, "Image: example:latest")
+		return nil
+	}
+	checks.registration = func(w io.Writer) (runnerIdentity, error) {
+		fmt.Fprintln(w, "    Name: example-agent")
+		fmt.Fprintln(w, "    ID: 42")
+		fmt.Fprintln(w, "    Volume: example-state")
+		return runnerIdentity{AgentID: 42, AgentName: "example-agent"}, nil
+	}
+	checks.github = func(w io.Writer, _ runnerIdentity) error {
+		fmt.Fprintln(w, "    Name: example-agent")
+		fmt.Fprintln(w, "    Status: online")
+		fmt.Fprintln(w, "    Busy: false")
+		return nil
+	}
+	checks.workflows = func(w io.Writer) error {
+		fmt.Fprintln(w, "    ci.yml                        1/1 jobs use variable")
+		fmt.Fprintln(w, "    pages.yaml                    2/2 jobs use variable")
+		return nil
+	}
+	checks.variable = func(w io.Writer) error {
+		fmt.Fprintln(w, `    RUNNER_LABELS_JSON: ["self-hosted","Linux","X64","repo-example-org-demo"]`)
+		return nil
+	}
+	if err := runFullDoctorWithColor(&out, "example-org/demo", checks, false); err != nil { t.Fatal(err) }
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != 7 { t.Fatalf("expected exactly six rows and summary (no headers/details), got %d: %q", len(lines), out.String()) }
+	for i := 0; i < 6; i++ {
+		expected := fmt.Sprintf("%02d    OK    ", i+1)
+		if !strings.HasPrefix(lines[i], expected) {
+			t.Errorf("line %d is not three-column: %q (want prefix %q)", i, lines[i], expected)
+		}
+	}
+	if !strings.Contains(lines[1], "0 tools verified in image, 4 provided by workflow actions") || !strings.Contains(lines[1], "6 workflows") {
+		t.Errorf("toolchain summary missing: %s", lines[1])
+	}
+	if !strings.Contains(lines[4], "2 files, 3/3 jobs") {
+		t.Errorf("workflow summary missing: %s", lines[4])
+	}
+	for _, forbidden := range []string{"GitHub Runner — Full Doctor", "GitHub Runner — Toolchain Doctor", "01: Clone repository", "\nRepository:", "\nImage:"} {
+		if strings.Contains(out.String(), forbidden) { t.Errorf("nested title or unaligned output %q: %s", forbidden, out.String()) }
+	}
+}
+
+func TestDoctorStatusBadgesColorAndAlignment(t *testing.T) {
+	for _, status := range []bool{true, false} {
+		plain := doctorBadge(status, false)
+		colored := doctorBadge(status, true)
+		if len(plain) != 6 { t.Errorf("status badge not fixed width: %q", plain) }
+		if !strings.Contains(colored, "\x1b[") || !strings.HasSuffix(colored, "\x1b[0m") { t.Errorf("missing terminal color/reset: %q", colored) }
+		if !strings.Contains(colored, plain) { t.Errorf("colored badge changes visible width: %q", colored) }
+	}
+	calls := []string{}
+	var out bytes.Buffer
+	if err := runFullDoctorWithColor(&out, "test/repo", fakeFullDoctor("variable", &calls), true); err == nil { t.Fatal("failed doctor must return an error") }
+	if !strings.Contains(out.String(), "\x1b[97;41m FAIL \x1b[0m") { t.Fatalf("missing red error background: %q", out.String()) }
+	if !strings.Contains(out.String(), "\x1b[30;42m  OK  \x1b[0m") { t.Fatalf("missing green success background: %q", out.String()) }
+}
+
+func TestDoctorErrorIsReportedOnceInRowAndSummary(t *testing.T) {
+	var out bytes.Buffer
+	calls := []string{}
+	err := runFullDoctor(&out, "test/repo", fakeFullDoctor("registration", &calls))
+	var diagnosis *doctorFailure
+	if !errors.As(err, &diagnosis) { t.Fatalf("expected recognized doctorFailure type, got %v", err) }
+	if !strings.Contains(out.String(), "03   FAIL   Local runner registration — synthetic registration failure") {
+		t.Errorf("missing compact error detail: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "04   FAIL   GitHub runner status and labels — local registration not verified") {
+		t.Errorf("missing dependent check explanation: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "RESULT: FAIL — 2 of 6") { t.Fatal(out.String()) }
 }
