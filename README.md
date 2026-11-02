@@ -5,7 +5,7 @@ repository-scoped, Docker/Colima-backed GitHub Actions runners without
 application-specific profiles, hardcoded repository names or workflow
 dependencies on the manager repository.
 
-Current version: **0.5.3**.
+Current version: **0.5.4**.
 
 ## Install
 
@@ -46,10 +46,21 @@ misrepresented as preinstalled in the runner image. Unsupported or dynamic
 requirements fail closed with a clear diagnostic; use the relevant setup
 action or a custom image rather than running arbitrary shell commands.
 
-`ghr doctor` prints readable numbered stages: repository and revision,
-workflow requirement counts, selected image, and one line per tool with
-`OK`, `WORKFLOW ACTION` or `FAIL`. Git progress is hidden on success but
-retained in failure details.
+**`ghr doctor --repo OWNER/REPO` is an end-to-end readiness check** with six stages:
+(1) local Docker container installed/running and image matches,
+(2) workflow toolchain verified in the image or attributed to setup actions,
+(3) local runner registration and persistent volume,
+(4) exact GitHub runner online, idle and correctly labeled,
+(5) all `.github/workflows/*.yml` and `*.yaml` jobs configured with
+`fromJSON(vars.RUNNER_LABELS_JSON ...)`,
+(6) the repository variable exists and contains JSON labels
+`["self-hosted","Linux","X64","repo-OWNER-REPO"]`.
+It prints PASS/FAIL for each step, continues through independent failures
+and returns nonzero if any check fails. Doctor is read-only and never modifies
+registrations, containers, workflows or GitHub variables.
+
+`ghr build --repo OWNER/REPO` continues to use the previous **image-only**
+toolchain verification; a registered/running runner is not required for builds.
 
 ## Register and operate
 

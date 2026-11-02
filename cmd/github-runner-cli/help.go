@@ -55,13 +55,13 @@ var commandDocs = map[string]commandDoc{
 		Notes:       []string{"The build prepares an image and registration volume but does not register/start a GitHub runner.", "Unrecognized required tools fail closed; extend the Dockerfile/profile first."},
 	},
 	"doctor": {
-		Summary:     "Verify the prepared Docker image satisfies workflow requirements.",
-		Description: "Rechecks current workflow requirements, locates the local Docker image, and verifies the supported tools and pinned versions. No GitHub registration or running runner is needed.",
+		Summary:     "Read-only end-to-end health check for the repository's self-hosted GitHub Actions runner.",
+		Description: "Checks the running local Docker container and image, required workflow tools, persisted runner registration, the exact GitHub runner's online/idle state and labels, every .github/workflows/*.yml/*.yaml job's RUNNER_LABELS_JSON selector, and the configured GitHub repository variable. Reports all six stages even when independent checks fail.",
 		Usage:       []string{"ghr doctor --repo OWNER/REPO"},
 		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
-		Values:      []string{"RUNNER_PROFILE: auto, generic, toolchain, runner-base.", "RUNNER_IMAGE: optional Docker image override."},
-		Examples:    []string{"ghr build --repo example-org/demo-app", "ghr doctor --repo example-org/demo-app", "ghr start --repo example-org/demo-app"},
-		Notes:       []string{"Doctor does not install missing tools.", "It checks the prepared image; start still requires a registered runner."},
+		Values:      []string{"RUNNER_BACKEND: docker (default via auto).", "RUNNER_PROFILE: auto, generic, toolchain, runner-base.", "RUNNER_IMAGE: optional explicit Docker image override.", "RUNNER_LABELS_JSON: repository variable containing JSON runner labels, e.g. [\"self-hosted\",\"Linux\",\"X64\",\"repo-example-org-demo-app\"]."},
+		Examples:    []string{"ghr doctor --repo example-org/demo-app", "ghr build --repo example-org/demo-app", "ghr status --repo example-org/demo-app", "gh variable set RUNNER_LABELS_JSON --repo example-org/demo-app --body '[\"self-hosted\",\"Linux\",\"X64\",\"repo-example-org-demo-app\"]'"},
+		Notes:       []string{"Doctor does not start/stop runners, modify workflow files or set GitHub variables.", "All local executable jobs must use runs-on: ${{ fromJSON(vars.RUNNER_LABELS_JSON || '\"ubuntu-24.04\"') }}.", "Workflow files with .yml and .yaml extensions are checked; reusable-workflow call jobs without runs-on are exempt.", "A runner currently executing a job is reported as BUSY/not idle and fails the strict idle check.", "ghr build still performs the image-only doctor and does not require a registered or running runner."},
 	},
 	"install": {
 		Summary:     "Build the runner image, register a repository runner and create its Docker container.",

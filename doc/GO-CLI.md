@@ -1,4 +1,4 @@
-# Go CLI v0.5.3 — repository-neutral runner manager
+# Go CLI v0.5.4 — repository-neutral runner manager
 
 ## Typical workflow
 
@@ -13,6 +13,49 @@ ghr status --repo OWNER/REPO
 
 `ghr help COMMAND` and `ghr COMMAND --help` print full syntax, valid values,
 examples and safety notes before attempting authentication or Docker access.
+
+## Full runner doctor (read-only)
+
+```sh
+ghr doctor --repo OWNER/REPO
+```
+
+This command now performs six checks in sequence, collecting independent failures:
+
+1. Local Docker/Colima container exists, is running and uses the selected image.
+2. Workflow requirements and toolchain available in that image (recognized setup
+   actions are reported as workflow-managed).
+3. Persistent local registration volume contains a valid runner ID, name and
+   repository identity.
+4. The exact GitHub runner is registered, `online`, **idle** (`busy=false`)
+   and has labels `self-hosted`, `Linux`, `X64`, `repo-OWNER-REPO`.
+5. Every executable job in every `.github/workflows/*.yml` and `*.yaml`
+   file selects `runs-on` via `fromJSON(vars.RUNNER_LABELS_JSON ...)`.
+   Reusable-workflow calling jobs with `uses:` and no local `runs-on`
+   are reported as exempt.
+6. GitHub's `RUNNER_LABELS_JSON` repository variable exists, is a JSON array
+   and contains all required self-hosted runner labels.
+
+A missing variable or a variable selecting `ubuntu-24.04` instead of the
+self-hosted runner is flagged as FAIL. A runner executing a workflow is
+reported as busy/not idle; rerun doctor after the job completes.
+
+To configure workflows:
+
+```yaml
+runs-on: ${{ fromJSON(vars.RUNNER_LABELS_JSON || '"ubuntu-24.04"') }}
+```
+
+To select the self-hosted runner:
+
+```sh
+gh variable set RUNNER_LABELS_JSON --repo OWNER/REPO --body '["self-hosted","Linux","X64","repo-owner-repo"]'
+```
+
+The doctor does **not** change GitHub variables or workflow files,
+re-register runners, or alter Docker state. The existing `ghr build`
+command continues to perform only the image/toolchain check before a
+runner is installed.
 
 ## Toolchain model
 

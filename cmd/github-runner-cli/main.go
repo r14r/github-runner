@@ -105,7 +105,7 @@ func run(args []string, executable, cwd string) error {
 			return err
 		}
 		if action == "doctor" {
-			return toolchainDoctor(r)
+			return fullDoctor(r)
 		}
 		return buildCommand(r)
 	case "list-installed":

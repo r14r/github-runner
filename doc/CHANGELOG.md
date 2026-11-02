@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.4 — Full runner doctor
+
+- Expand `ghr doctor --repo OWNER/REPO` to six read-only checks covering:
+  running local Docker container/image, toolchain, persisted registration,
+  GitHub online/idle runner and repository label, all YAML/YML workflow
+  job selectors, and the `RUNNER_LABELS_JSON` repository variable.
+- Verify variable value is a JSON label array for the expected repository
+  runner. Reject missing variables or GitHub-hosted selections.
+- Check all workflow files; report job-level missing/static selectors
+  and treat reusable-workflow call jobs as exempt.
+- Print an overall PASS/FAIL with individual stage diagnostics; do not
+  stop on unrelated errors. Never mutate container/runner/GitHub state.
+- Retain the standalone image/toolchain doctor for `ghr build`, so builds
+  do not require a registered or running runner.
+- Add unit tests for all six stages, missing labels, offline/busy
+  registrations, variable values and .yaml/.yml workflow routing.
 ## 0.5.3 — GitHub Actions workflow run management and bulk cleanup
 
 - Add `ghr actions list|cancel|delete --repo OWNER/REPO` with
