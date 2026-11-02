@@ -70,7 +70,10 @@ func doctorStageDescription(number int, title, details string) string {
 	switch number {
 	case 1:
 		if fields["Container"] != "" {
-			return fmt.Sprintf("Docker: %s (%s; image matches)", fields["Container"], fields["State"])
+			if fields["Image"] != "" {
+				return fmt.Sprintf("Docker: %s (%s; image matches)", fields["Container"], fields["State"])
+			}
+			return fmt.Sprintf("Docker: %s (%s)", fields["Container"], fields["State"])
 		}
 	case 2:
 		// Reuse the existing toolchain checks but show only their summary.
@@ -85,7 +88,7 @@ func doctorStageDescription(number int, title, details string) string {
 		}
 	case 4:
 		if fields["Name"] != "" {
-			return fmt.Sprintf("GitHub: %s (%s; busy=%s; labels match)", fields["Name"], fields["Status"], fields["Busy"])
+			return fmt.Sprintf("GitHub: %s (%s; busy=%s)", fields["Name"], fields["Status"], fields["Busy"])
 		}
 	case 5:
 		files, matched, total := 0, 0, 0
