@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.3 — GitHub Actions workflow run management
+
+- Add `ghr actions list|cancel|delete --repo OWNER/REPO` with
+  `--state`, `--yes` and delete-only `--with-cancel`.
+- Filter by documented GitHub workflow run statuses and conclusions,
+  with an explicit `all` selection.
+- Destructive operations default to a preview and require
+  `--yes --state STATE`, preventing unintended bulk changes.
+- Implement `delete --with-cancel` with cancellation, bounded wait
+  until GitHub reports `completed`, and then deletion.
+- Gather run pages before mutations and verify individual run status
+  before making API changes. No dependency on installed Docker runtime.
+- Extend detailed help for `actions`, each subcommand and the complete
+  table of states; accept `ghr actions delete help`.
+- Add regression tests for filtering, dry-runs, cancellation,
+  deletion, timeouts and changed run states.
+
+
 ## 0.5.2 — Tail-follow only monitor
 
 - `ghr monitor --repo OWNER/REPO` streams **only container logs**
