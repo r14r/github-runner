@@ -54,7 +54,6 @@ func TestFullDoctorSixChecksPass(t *testing.T) {
 		"01", "Docker container", "02", "Image and toolchain", "03", "Local runner registration",
 		"04", "GitHub runner status", "05", "Workflow runner selectors", "06", "RUNNER_LABELS_JSON",
 		"RESULT: PASS — all 6 checks OK",
-	}
 	} {
 		if !strings.Contains(output.String(), heading) {
 			t.Errorf("missing %q in %q", heading, output.String())
