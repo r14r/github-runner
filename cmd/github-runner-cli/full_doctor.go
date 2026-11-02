@@ -130,7 +130,8 @@ func runFullDoctorWithColor(out io.Writer, repo string, checks doctorChecks, col
 		err := work(&details)
 		description := doctorStageDescription(number, title, details.String())
 		if err != nil {
-			description += " — " + err.Error()
+			// Multi-line error messages must not break the three-column layout.
+			description += " — " + strings.Join(strings.Fields(err.Error()), " ")
 			failures = append(failures, fmt.Errorf("%s: %w", title, err))
 		}
 		fmt.Fprintf(out, "%02d  %s  %s\n", number, doctorBadge(err == nil, color), description)
