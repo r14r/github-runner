@@ -5,7 +5,7 @@ repository-scoped, Docker/Colima-backed GitHub Actions runners without
 application-specific profiles, hardcoded repository names or workflow
 dependencies on the manager repository.
 
-Current version: **0.5.4**.
+Current version: **0.5.5**.
 
 ## Install
 
@@ -55,8 +55,16 @@ action or a custom image rather than running arbitrary shell commands.
 `fromJSON(vars.RUNNER_LABELS_JSON ...)`,
 (6) the repository variable exists and contains JSON labels
 `["self-hosted","Linux","X64","repo-OWNER-REPO"]`.
-It prints PASS/FAIL for each step, continues through independent failures
-and returns nonzero if any check fails. Doctor is read-only and never modifies
+It prints **exactly six aligned three-column rows**, followed by a result
+row: two-digit step number, fixed-width `OK`/`FAIL` badge with green/red
+background on color-capable terminals, and a concise description. There
+are no introductory banners, duplicate Toolchain Doctor output or
+repeated multi-line errors. Redirected output and `NO_COLOR=1` use plain
+text, retaining alignment. The doctor continues through independent failures
+and exits nonzero on any failed check.
+
+Runner identity files with an optional leading UTF-8 BOM are read safely
+without modifying the registration volume. Doctor is read-only and never modifies
 registrations, containers, workflows or GitHub variables.
 
 `ghr build --repo OWNER/REPO` continues to use the previous **image-only**
