@@ -179,7 +179,7 @@ func checkDoctorWorkflowSource(name string, data []byte) doctorWorkflowResult {
 		if job == "" { return }
 		result.count++
 		switch {
-		case doctorRunnerVariable.MatchString(runsOn):
+		case strings.Contains(runsOn, "${{") && strings.Contains(runsOn, "}}") && doctorRunnerVariable.MatchString(runsOn):
 			result.checked++
 		case reusable && runsOn == "":
 			result.reusable++
@@ -226,6 +226,7 @@ func checkDoctorWorkflowDirectory(root string, out io.Writer) error {
 	sort.Strings(files)
 	if len(files) == 0 { return errors.New("no .github/workflows/*.yaml or *.yml found") }
 	failures := []error{}
+	jobs := 0
 	for _, path := range files {
 		info, err := os.Lstat(path)
 		if err != nil { failures = append(failures, err); continue }
@@ -233,11 +234,13 @@ func checkDoctorWorkflowDirectory(root string, out io.Writer) error {
 		data, err := os.ReadFile(path)
 		if err != nil { failures = append(failures, err); continue }
 		r := checkDoctorWorkflowSource(filepath.Base(path), data)
+		jobs += r.count-r.reusable
 		fmt.Fprintf(out, "    %-30s %d/%d jobs use variable", r.filename, r.checked, r.count-r.reusable)
 		if r.reusable > 0 { fmt.Fprintf(out, " (%d reusable job(s) exempt)", r.reusable) }
 		fmt.Fprintln(out)
 		for _, item := range r.problems { failures = append(failures, errors.New(item)) }
 	}
+	if jobs == 0 { failures = append(failures, errors.New("no locally scheduled workflow jobs found")) }
 	if len(failures) > 0 { return errors.Join(failures...) }
 	return nil
 }
