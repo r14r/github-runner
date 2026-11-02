@@ -176,41 +176,49 @@ func githubActionsRequest(method, endpoint string) ([]byte, error) {
 	return output, nil
 }
 
+// fetchAllWorkflowRuns gathers a complete, deduplicated snapshot before any
+// mutation. A short/missing page or API error never produces a partial result.
+func fetchAllWorkflowRuns(repo string, request func(endpoint string) ([]byte, error)) ([]workflowRun, error) {
+	runs := []workflowRun{}
+	seen := map[int64]bool{}
+	for page := 1; page <= maxActionsPages; page++ {
+		endpoint := fmt.Sprintf("repos/%s/actions/runs?per_page=%d&page=%d", repo, actionsPageSize, page)
+		data, err := request(endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("cannot retrieve workflow run page %d: %w", page, err)
+		}
+		var response struct {
+			TotalCount   int           `json:"total_count"`
+			WorkflowRuns []workflowRun `json:"workflow_runs"`
+		}
+		if err := json.Unmarshal(data, &response); err != nil {
+			return nil, fmt.Errorf("invalid GitHub Actions run page %d: %w", page, err)
+		}
+		for _, item := range response.WorkflowRuns {
+			if item.ID <= 0 || seen[item.ID] {
+				return nil, fmt.Errorf("unexpected duplicate/invalid run ID on page %d", page)
+			}
+			seen[item.ID] = true
+			runs = append(runs, item)
+		}
+		if len(response.WorkflowRuns) < actionsPageSize {
+			if response.TotalCount > len(runs) {
+				// GitHub may cap search results. Never silently perform
+				// a partial bulk destructive operation.
+				return nil, fmt.Errorf("GitHub returned only %d of %d workflow runs; refusing partial result", len(runs), response.TotalCount)
+			}
+			return runs, nil
+		}
+	}
+	return nil, fmt.Errorf("workflow run list exceeds %d pages; refusing partial result", maxActionsPages)
+}
+
 func newGitHubActionsAPI() actionsAPI {
 	return actionsAPI{
 		list: func(repo string) ([]workflowRun, error) {
-			runs := []workflowRun{}
-			seen := map[int64]bool{}
-			for page := 1; page <= maxActionsPages; page++ {
-				endpoint := fmt.Sprintf("repos/%s/actions/runs?per_page=%d&page=%d", repo, actionsPageSize, page)
-				data, err := githubActionsRequest("GET", endpoint)
-				if err != nil {
-					return nil, fmt.Errorf("cannot retrieve workflow run page %d: %w", page, err)
-				}
-				var response struct {
-					TotalCount   int           `json:"total_count"`
-					WorkflowRuns []workflowRun `json:"workflow_runs"`
-				}
-				if err := json.Unmarshal(data, &response); err != nil {
-					return nil, fmt.Errorf("invalid GitHub Actions run page %d: %w", page, err)
-				}
-				for _, item := range response.WorkflowRuns {
-					if item.ID <= 0 || seen[item.ID] {
-						return nil, fmt.Errorf("unexpected duplicate/invalid run ID on page %d", page)
-					}
-					seen[item.ID] = true
-					runs = append(runs, item)
-				}
-				if len(response.WorkflowRuns) < actionsPageSize {
-					if response.TotalCount > len(runs) {
-						// GitHub may cap searchable results. Never silently
-						// perform a partial bulk destructive operation.
-						return nil, fmt.Errorf("GitHub returned only %d of %d workflow runs; refusing partial result", len(runs), response.TotalCount)
-					}
-					return runs, nil
-				}
-			}
-			return nil, fmt.Errorf("workflow run list exceeds %d pages; refusing partial result", maxActionsPages)
+			return fetchAllWorkflowRuns(repo, func(endpoint string) ([]byte, error) {
+				return githubActionsRequest("GET", endpoint)
+			})
 		},
 		get: func(repo string, id int64) (workflowRun, error) {
 			data, err := githubActionsRequest("GET", fmt.Sprintf("repos/%s/actions/runs/%d", repo, id))
@@ -299,7 +307,7 @@ func actionsCommand(args []string, api actionsAPI, output io.Writer) error {
 			if err != nil {
 				return fmt.Errorf("cannot verify run %d before cancellation: %w", r.ID, err)
 			}
-			if !cancellableRun(latest) {
+			if !cancellableRun(latest) || !stateMatchesRun(latest, o.state) {
 				skipped++
 				continue
 			}
@@ -334,7 +342,7 @@ func actionsCommand(args []string, api actionsAPI, output io.Writer) error {
 			return fmt.Errorf("cannot verify run %d before deletion: %w", r.ID, err)
 		}
 		if latest.Status != "completed" {
-			if !o.withCancel || !cancellableRun(latest) {
+			if !o.withCancel || !cancellableRun(latest) || !stateMatchesRun(latest, o.state) {
 				skipped++
 				continue
 			}
