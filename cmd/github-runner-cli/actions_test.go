@@ -21,7 +21,7 @@ func fixtureActionsAPI(runs []workflowRun, events *[]string) actionsAPI {
 		byID[r.ID] = r
 	}
 	return actionsAPI{
-		list: func(repo string) ([]workflowRun, error) {
+		list: func(repo, state string) ([]workflowRun, error) {
 			*events = append(*events, "list "+repo)
 			return runs, nil
 		},
@@ -93,7 +93,7 @@ func TestActionsRejectInvalidFlagsBeforeAnySideEffects(t *testing.T) {
 		}
 	}
 	called := false
-	api := actionsAPI{list: func(string) ([]workflowRun, error) { called = true; return nil, nil }}
+	api := actionsAPI{list: func(string, string) ([]workflowRun, error) { called = true; return nil, nil }}
 	if err := actionsCommand([]string{"delete", "--repo", "example-org/demo", "--yes"}, api, &bytes.Buffer{}); err == nil || called {
 		t.Fatal("destructive request without state reached GitHub")
 	}
