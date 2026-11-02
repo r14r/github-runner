@@ -47,6 +47,9 @@ jobs:
           "$RUNNER_TEMP/bin/github-runner-cli" status --help | grep -q 'ghr status --repo'
           "$RUNNER_TEMP/bin/github-runner-cli" doctor --help | grep -q 'ghr doctor --repo'
           "$RUNNER_TEMP/bin/github-runner-cli" requirements --help | grep -q -- '--output PATH'
+          "$RUNNER_TEMP/bin/github-runner-cli" actions help | grep -q 'AVAILABLE STATES:'
+          "$RUNNER_TEMP/bin/github-runner-cli" actions delete help | grep -q -- '--with-cancel'
+          "$RUNNER_TEMP/bin/github-runner-cli" actions list --help | grep -q 'in_progress'
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/runner/docker/Dockerfile"
           test -f "$RUNNER_TEMP/bin/env/github-runner-cli/runner/docker/entrypoint.sh"
           test ! -e "$RUNNER_TEMP/bin/env/github-runner-cli/scripts"
