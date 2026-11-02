@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,39 +24,136 @@ type doctorChecks struct {
 	variable     func(io.Writer) error
 }
 
-func runFullDoctor(out io.Writer, repo string, checks doctorChecks) error {
-	fmt.Fprintf(out, "GitHub Runner — Full Doctor\nRepository: %s\n", repo)
-	failures := []error{}
-	check := func(number int, title string, work func() error) {
-		fmt.Fprintf(out, "\n%02d: %s\n", number, title)
-		if err := work(); err != nil {
-			fmt.Fprintf(out, "    Status: FAIL — %s\n", err)
-			failures = append(failures, fmt.Errorf("%s: %w", title, err))
-		} else {
-			fmt.Fprintln(out, "    Status: OK")
+// doctorBadge uses a fixed visible width so the third column remains aligned
+// even when ANSI background colors are enabled.
+func doctorBadge(ok, color bool) string {
+	label := "  OK  "
+	if !ok {
+		label = " FAIL "
+	}
+	if !color {
+		return label
+	}
+	if ok {
+		return "\x1b[30;42m" + label + "\x1b[0m"
+	}
+	return "\x1b[97;41m" + label + "\x1b[0m"
+}
+
+func doctorColorEnabled(out io.Writer) bool {
+	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	file, ok := out.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := file.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
+}
+
+func doctorFields(details string) map[string]string {
+	fields := map[string]string{}
+	for _, line := range strings.Split(details, "\n") {
+		key, value, ok := strings.Cut(strings.TrimSpace(line), ":")
+		if ok {
+			fields[strings.TrimSpace(key)] = strings.TrimSpace(value)
 		}
+	}
+	return fields
+}
+
+var doctorWorkflowSummary = regexp.MustCompile(`\b([0-9]+)/([0-9]+) jobs use variable\b`)
+
+func doctorStageDescription(number int, title, details string) string {
+	fields := doctorFields(details)
+	switch number {
+	case 1:
+		if fields["Container"] != "" {
+			return fmt.Sprintf("Docker: %s (%s; image matches)", fields["Container"], fields["State"])
+		}
+	case 2:
+		// Reuse the existing toolchain checks but show only their summary.
+		for _, line := range strings.Split(details, "\n") {
+			if summary, ok := strings.CutPrefix(strings.TrimSpace(line), "RESULT: PASS — "); ok {
+				return "Toolchain: " + summary + "; " + fields["Workflows"] + " workflows"
+			}
+		}
+	case 3:
+		if fields["Name"] != "" {
+			return fmt.Sprintf("Registration: %s (ID %s; volume %s)", fields["Name"], fields["ID"], fields["Volume"])
+		}
+	case 4:
+		if fields["Name"] != "" {
+			return fmt.Sprintf("GitHub: %s (%s; busy=%s; labels match)", fields["Name"], fields["Status"], fields["Busy"])
+		}
+	case 5:
+		files, matched, total := 0, 0, 0
+		for _, line := range strings.Split(details, "\n") {
+			if match := doctorWorkflowSummary.FindStringSubmatch(line); match != nil {
+				var okCount, jobCount int
+				_, _ = fmt.Sscanf(match[1], "%d", &okCount)
+				_, _ = fmt.Sscanf(match[2], "%d", &jobCount)
+				files++
+				matched += okCount
+				total += jobCount
+			}
+		}
+		if files > 0 {
+			return fmt.Sprintf("Workflows: %d files, %d/%d jobs use RUNNER_LABELS_JSON", files, matched, total)
+		}
+	case 6:
+		if fields["RUNNER_LABELS_JSON"] != "" {
+			return "RUNNER_LABELS_JSON: " + fields["RUNNER_LABELS_JSON"]
+		}
+	}
+	return title
+}
+
+type doctorFailure struct{ causes []error }
+
+func (e *doctorFailure) Error() string { return errors.Join(e.causes...).Error() }
+func (e *doctorFailure) Unwrap() error { return errors.Join(e.causes...) }
+
+func runFullDoctor(out io.Writer, repo string, checks doctorChecks) error {
+	return runFullDoctorWithColor(out, repo, checks, doctorColorEnabled(out))
+}
+
+// No banner or nested diagnostic output: each stage is one three-column row.
+func runFullDoctorWithColor(out io.Writer, repo string, checks doctorChecks, color bool) error {
+	failures := []error{}
+	check := func(number int, title string, work func(io.Writer) error) {
+		var details bytes.Buffer
+		err := work(&details)
+		description := doctorStageDescription(number, title, details.String())
+		if err != nil {
+			description += " — " + err.Error()
+			failures = append(failures, fmt.Errorf("%s: %w", title, err))
+		}
+		fmt.Fprintf(out, "%02d  %s  %s\n", number, doctorBadge(err == nil, color), description)
 	}
 	var identity runnerIdentity
 	var identityErr error
-	check(1, "Check local Docker container", func() error { return checks.container(out) })
-	check(2, "Check image and toolchain", func() error { return checks.toolchain(out) })
-	check(3, "Check local runner registration", func() error {
+	check(1, "Docker container", checks.container)
+	check(2, "Image and toolchain", checks.toolchain)
+	check(3, "Local runner registration", func(out io.Writer) error {
 		identity, identityErr = checks.registration(out)
 		return identityErr
 	})
-	check(4, "Check GitHub runner status and labels", func() error {
+	check(4, "GitHub runner status and labels", func(out io.Writer) error {
 		if identityErr != nil {
 			return fmt.Errorf("local registration not verified; %w", identityErr)
 		}
 		return checks.github(out, identity)
 	})
-	check(5, "Check all workflow runner selectors", func() error { return checks.workflows(out) })
-	check(6, "Check RUNNER_LABELS_JSON repository variable", func() error { return checks.variable(out) })
+	check(5, "Workflow runner selectors", checks.workflows)
+	check(6, "RUNNER_LABELS_JSON repository variable", checks.variable)
 	if len(failures) > 0 {
-		fmt.Fprintf(out, "\nRESULT: FAIL — %d of 6 checks failed\n", len(failures))
-		return errors.Join(failures...)
+		fmt.Fprintf(out, "--  %s  RESULT: FAIL — %d of 6 checks failed (%s)\n",
+			doctorBadge(false, color), len(failures), repo)
+		return &doctorFailure{causes: failures}
 	}
-	fmt.Fprintln(out, "\nRESULT: PASS — all 6 checks OK")
+	fmt.Fprintf(out, "--  %s  RESULT: PASS — all 6 checks OK (%s)\n", doctorBadge(true, color), repo)
 	return nil
 }
 
@@ -85,7 +183,7 @@ func fullDoctor(r dockerRunner) error {
 		toolchain: func(out io.Writer) error {
 			// Reuse the existing image-only doctor so 'ghr build' still works
 			// before any runner is installed or registered.
-			return toolchainDoctor(r)
+			return toolchainDoctorOutput(r, out)
 		},
 		registration: func(out io.Writer) (runnerIdentity, error) {
 			local, err := inspectLocal(r.Slug)
