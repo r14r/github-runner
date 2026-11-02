@@ -1,0 +1,29 @@
+name: One-time formatting of full runner doctor
+on:
+  push:
+    branches:
+      - feat/full-runner-doctor-v0.5.4
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/full-runner-doctor-v0.5.4
+          persist-credentials: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Normalize new Go files
+        run: |
+          gofmt -w cmd/github-runner-cli/full_doctor.go cmd/github-runner-cli/full_doctor_test.go
+          git diff --check
+          if ! git diff --quiet -- cmd/github-runner-cli/full_doctor.go cmd/github-runner-cli/full_doctor_test.go; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add cmd/github-runner-cli/full_doctor.go cmd/github-runner-cli/full_doctor_test.go
+            git commit -m "style: gofmt full runner doctor"
+            git push origin HEAD:feat/full-runner-doctor-v0.5.4
+          fi
