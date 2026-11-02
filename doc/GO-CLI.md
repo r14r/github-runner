@@ -1,4 +1,4 @@
-# Go CLI v0.5.1 — repository-neutral runner manager
+# Go CLI v0.5.2 — repository-neutral runner manager
 
 ## Typical workflow
 
@@ -44,6 +44,22 @@ identity, GitHub API unavailability or a busy registration aborts before
 stopping. An existing privileged Docker socket is preserved only when
 `RUNNER_DOCKER_SOCKET=1` is explicitly set. The GitHub registration
 and persistent Docker volume are never removed by refresh.
+
+## Live log monitoring
+
+`ghr monitor` behaves like `tail -f` on the runner container logs.
+There is no status snapshot, Actions run table or periodic polling.
+
+```sh
+ghr monitor --repo OWNER/REPO
+RUNNER_MONITOR_TAIL=0 ghr monitor --repo OWNER/REPO
+RUNNER_MONITOR_TAIL=30 ghr monitor --repo OWNER/REPO
+```
+
+The default is the last 10 lines **once**, then continuous live streaming.
+`RUNNER_MONITOR_TAIL` accepts 0–1000. Setting it to `0` prints only
+new log entries. The obsolete `RUNNER_MONITOR_SECONDS` is ignored.
+`Ctrl+C` exits the monitor, not the runner.
 
 ## Runner state and compatibility
 
