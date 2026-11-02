@@ -412,6 +412,10 @@ func TestFilteredSearchPartitionsOverThousandRunGitHubCap(t *testing.T) {
 		if !strings.Contains(endpoint, "created=") {
 			return []byte(`{"total_count":1000,"workflow_runs":[{"id":1,"status":"completed","conclusion":"failure"}]}`), nil
 		}
+		if strings.Contains(endpoint, "2018-01-01") && strings.Contains(endpoint, "2026-11-03") {
+			// The full created range still hits GitHub's 1,000-result cap.
+			return []byte(`{"total_count":1000,"workflow_runs":[]}`), nil
+		}
 		if strings.Contains(endpoint, "2018-01-01") {
 			return []byte(`{"total_count":1,"workflow_runs":[{"id":1,"status":"completed","conclusion":"failure"}]}`), nil
 		}
