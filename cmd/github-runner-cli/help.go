@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/tabwriter"
 )
 
 // Help is handled before runtime asset discovery, flag validation, or any
@@ -138,6 +139,38 @@ var commandDocs = map[string]commandDoc{
 		Examples:    []string{"ghr self-uninstall --help", "ghr self-uninstall --yes"},
 		Notes:       []string{"Does NOT stop/unregister runners or remove Docker containers, images or volumes.", "Run from an installed binary with sufficient filesystem permissions."},
 	},
+	"actions": {
+		Summary:     "Manage GitHub Actions workflow runs: list, cancel and delete.",
+		Description: "Reads workflow run history for an explicitly selected GitHub repository. Cancel and delete are dry-run by default and require both --yes and an explicitly selected --state to make changes. Uses the authenticated GitHub CLI; Docker is not required.",
+		Usage:       []string{"ghr actions list --repo OWNER/REPO [--state STATE]", "ghr actions cancel --repo OWNER/REPO [--state STATE] [--yes]", "ghr actions delete --repo OWNER/REPO [--state STATE] [--with-cancel] [--yes]", "ghr actions help [list|cancel|delete]"},
+		Options:     []string{repositoryFlagHelp, "--state STATE            Select state or conclusion; defaults to all for previews and lists.", "--yes                    Execute cancellation/deletion (requires an explicit --state).", "--with-cancel            Only for delete: cancel matching active runs, wait for completion, then delete.", "-h, --help              Show help at any subcommand level."},
+		Examples:    []string{"ghr actions list --repo example-org/demo-app", "ghr actions list --repo example-org/demo-app --state failure", "ghr actions cancel --repo example-org/demo-app --state in_progress --yes", "ghr actions delete --repo example-org/demo-app --state failure --yes", "ghr actions delete --repo example-org/demo-app --state all --with-cancel --yes"},
+		Notes:       []string{"For safety, --yes requires an explicit --state; use --state all deliberately for all runs.", "Without --yes, cancel and delete only show which runs would be affected.", "Deletion is irreversible. Active runs are skipped unless --with-cancel is given.", "Multiple pages of runs are collected before mutations, preventing pagination gaps during deletion."},
+	},
+	"actions list": {
+		Summary:     "List GitHub Actions workflow runs and their status/conclusion.",
+		Description: "Fetches all available pages of workflow runs and prints run ID, status, conclusion, workflow, branch and title. Can filter by an Actions state or conclusion. Read-only; no Docker is required.",
+		Usage:       []string{"ghr actions list --repo OWNER/REPO [--state STATE]"},
+		Options:     []string{repositoryFlagHelp, "--state STATE            Filter runs by status or conclusion (default: all).", "-h, --help              Show detailed help and available states."},
+		Examples:    []string{"ghr actions list --repo example-org/demo-app", "ghr actions list --repo example-org/demo-app --state failure", "ghr actions list --repo example-org/demo-app --state in_progress"},
+		Notes:       []string{"--yes and --with-cancel are not applicable to list.", "All matching runs are shown, not just the first GitHub API page."},
+	},
+	"actions cancel": {
+		Summary:     "Preview or request cancellation of GitHub Actions runs.",
+		Description: "Shows cancellable matching runs and, only with --yes and explicit --state, sends cancellation requests. Already completed runs are skipped. The CLI verifies each run is still active immediately before cancelling it.",
+		Usage:       []string{"ghr actions cancel --repo OWNER/REPO [--state STATE] [--yes]"},
+		Options:     []string{repositoryFlagHelp, "--state STATE            Filter by status/conclusion; required when --yes.", "--yes                    Actually cancel matching active runs (otherwise dry-run).", "-h, --help              Show detailed help and available states."},
+		Examples:    []string{"ghr actions cancel --repo example-org/demo-app --state in_progress", "ghr actions cancel --repo example-org/demo-app --state in_progress --yes", "ghr actions cancel --repo example-org/demo-app --state all --yes"},
+		Notes:       []string{"GitHub cancellation requests are asynchronous; this command does not delete runs.", "Matching completed runs and runs that become completed during execution are skipped.", "Use --state all to consider every currently active run."},
+	},
+	"actions delete": {
+		Summary:     "Preview or permanently delete workflow run history.",
+		Description: "Deletes only runs that GitHub confirms as completed. By default active runs are skipped. With --with-cancel, matching active runs are cancelled, polled until completed, and then deleted. No changes occur without both --yes and an explicit --state.",
+		Usage:       []string{"ghr actions delete --repo OWNER/REPO [--state STATE] [--with-cancel] [--yes]"},
+		Options:     []string{repositoryFlagHelp, "--state STATE            Filter by status/conclusion; required when --yes.", "--yes                    Perform irreversible deletion (otherwise dry-run).", "--with-cancel            Also cancel matching active runs and wait for completion before deleting.", "-h, --help              Show detailed help and available states."},
+		Examples:    []string{"ghr actions delete --repo example-org/demo-app --state failure", "ghr actions delete --repo example-org/demo-app --state failure --yes", "ghr actions delete --repo example-org/demo-app --state all --with-cancel", "ghr actions delete --repo example-org/demo-app --state all --with-cancel --yes"},
+		Notes:       []string{"DELETION IS IRREVERSIBLE; always inspect the dry-run before adding --yes.", "A cancellation request is not the same as completion; deletion waits for the final completed status.", "A run still active after the timeout is preserved, and the operation reports an error.", "This does not change or delete self-hosted runner registrations, containers, or Docker volumes."},
+	},
 	"runner": {
 		Summary:     "Advanced repository-specific runner operations.",
 		Description: "Manage individual lifecycle stages and workflow-routing pull requests. For a new runner prefer the top-level install command.",
@@ -251,14 +284,17 @@ func maybeShowHelp(args []string) (bool, error) {
 	case "-h", "--help":
 		return true, showCommandHelp(args[1:])
 	}
-	if first == "runner" {
+	if first == "runner" || first == "actions" {
 		if len(args) > 1 && strings.EqualFold(args[1], "help") {
 			return true, showCommandHelp(append([]string{first}, args[2:]...))
 		}
 	}
+	if first == "actions" && len(args) > 2 && strings.EqualFold(args[len(args)-1], "help") {
+		return true, showCommandHelp([]string{first, args[1]})
+	}
 	for _, arg := range args[1:] {
 		if arg == "--help" || arg == "-h" {
-			if (first == "runner") && len(args) > 2 && args[1] != "--help" && args[1] != "-h" {
+			if (first == "runner" || first == "actions") && len(args) > 2 && args[1] != "--help" && args[1] != "-h" {
 				return true, showCommandHelp([]string{first, args[1]})
 			}
 			return true, showCommandHelp([]string{first})
@@ -293,6 +329,15 @@ func showCommandHelp(path []string) error {
 	printHelpSection("VALUES", doc.Values)
 	printHelpSection("EXAMPLES", doc.Examples)
 	printHelpSection("NOTES", doc.Notes)
+	if key == "actions" || strings.HasPrefix(key, "actions ") {
+		fmt.Print("\nAVAILABLE STATES:\n")
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		fmt.Fprintln(w, "STATE\tDESCRIPTION")
+		for _, state := range actionsStates {
+			fmt.Fprintf(w, "%s\t%s\n", state.Name, state.Description)
+		}
+		_ = w.Flush()
+	}
 	fmt.Print("\nTip: 'ghr help' lists all available commands. 'github-runner-cli' is the full executable name.\n")
 	return nil
 }
@@ -326,12 +371,12 @@ RUNNER COMMANDS:
   start               Start a registered runner
   stop                Stop a runner (check busy state before stopping)
   status              Inspect container status and GitHub online/busy state
-  monitor             Watch status, recent runs and logs (Ctrl+C to quit)
+  monitor             Follow live runner container logs (Ctrl+C to quit)
   refresh             Replace a stopped container, preserving its volume
   list-installed      List local runners; --repo also lists GitHub registrations
   uninstall           Safely unregister/remove one or all local runners
   self-uninstall      Remove only the installed CLI and runtime assets
-  runner              Advanced Docker commands and workflow setup
+  runner              Advanced Docker commands and workflow setup\n  actions             List, cancel and delete GitHub Actions workflow runs
   version             Print the CLI version
   help                Show this overview or detailed command help
 
@@ -341,7 +386,7 @@ COMMON OPTIONS:
   --dry-run                 Preview uninstallation without modifying anything
   --delete-data             Delete runner volume; irreversible
   --all                     Select all local installations for uninstall/listing
-  --yes                     Required for bulk removal and self-uninstall
+  --yes                     Confirm destructive operations (including Actions changes)
   -h, --help                Show help at any command level
 
 GLOBAL ENVIRONMENT:
@@ -366,7 +411,7 @@ MORE HELP:
   ghr status --help
   ghr help uninstall
   ghr runner --help
-  ghr help runner setup
+  ghr help actions delete\n  ghr actions delete --help\n  ghr help runner setup
   ghr runner setup --help
 
 The full binary name is 'github-runner-cli'; 'ghr' is a shell shortcut if
