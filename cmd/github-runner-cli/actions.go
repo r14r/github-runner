@@ -51,13 +51,13 @@ type actionsOptions struct {
 }
 
 type workflowRun struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
+	ID           int64  `json:"id"`
+	Name         string `json:"name"`
 	DisplayTitle string `json:"display_title"`
-	Status      string `json:"status"`
-	Conclusion  string `json:"conclusion"`
-	HeadBranch  string `json:"head_branch"`
-	Event       string `json:"event"`
+	Status       string `json:"status"`
+	Conclusion   string `json:"conclusion"`
+	HeadBranch   string `json:"head_branch"`
+	Event        string `json:"event"`
 }
 
 type actionsAPI struct {

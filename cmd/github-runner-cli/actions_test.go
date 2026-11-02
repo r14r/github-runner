@@ -54,7 +54,7 @@ func fixtureActionsAPI(runs []workflowRun, events *[]string) actionsAPI {
 
 func TestParseActionsArgsAndFilters(t *testing.T) {
 	for _, tc := range []struct {
-		args []string
+		args            []string
 		op, repo, state string
 		yes, withCancel bool
 	}{
@@ -111,9 +111,9 @@ func TestActionsStateMatchesGithubStatusesAndConclusions(t *testing.T) {
 	failed := runFixture(1, "completed", "failure")
 	active := runFixture(2, "in_progress", "")
 	for _, tc := range []struct {
-		run workflowRun
+		run   workflowRun
 		state string
-		want bool
+		want  bool
 	}{
 		{failed, "all", true}, {failed, "failure", true},
 		{failed, "completed", true}, {failed, "success", false},
@@ -160,15 +160,21 @@ func TestActionsCancelDryRunAndExecution(t *testing.T) {
 	if strings.Count(output.String(), "WOULD CANCEL") != 2 || strings.Contains(output.String(), "CANCELLED") {
 		t.Errorf("dry run output: %s", output.String())
 	}
-	if len(events) != 1 { t.Fatalf("dry-run made API mutations: %v", events) }
+	if len(events) != 1 {
+		t.Fatalf("dry-run made API mutations: %v", events)
+	}
 	events = nil
 	output.Reset()
 	if err := actionsCommand([]string{"cancel", "--repo", "example-org/demo", "--state", "all", "--yes"}, api, &output); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"list example-org/demo", "get 1", "cancel 1", "get 2", "cancel 2"}
-	if !reflect.DeepEqual(events, want) { t.Errorf("actual API calls %v; want %v", events, want) }
-	if strings.Count(output.String(), "CANCELLED") != 2 { t.Errorf("cancel results: %s", output.String()) }
+	if !reflect.DeepEqual(events, want) {
+		t.Errorf("actual API calls %v; want %v", events, want)
+	}
+	if strings.Count(output.String(), "CANCELLED") != 2 {
+		t.Errorf("cancel results: %s", output.String())
+	}
 }
 
 func TestActionsDeleteDryRunSkipsActive(t *testing.T) {
@@ -183,7 +189,9 @@ func TestActionsDeleteDryRunSkipsActive(t *testing.T) {
 	if !strings.Contains(output.String(), "WOULD DELETE 1") || strings.Contains(output.String(), "WOULD DELETE 2") {
 		t.Errorf("unexpected dry-run: %s", output.String())
 	}
-	if len(events) != 1 { t.Fatalf("dry-run was destructive: %v", events) }
+	if len(events) != 1 {
+		t.Fatalf("dry-run was destructive: %v", events)
+	}
 }
 
 func TestActionsDeleteOnlyMatchingCompletedRuns(t *testing.T) {
@@ -198,8 +206,12 @@ func TestActionsDeleteOnlyMatchingCompletedRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"list example-org/demo", "get 1", "delete 1"}
-	if !reflect.DeepEqual(events, want) { t.Errorf("API calls: %v; want %v", events, want) }
-	if !strings.Contains(output.String(), "DELETED 1") { t.Fatal(output.String()) }
+	if !reflect.DeepEqual(events, want) {
+		t.Errorf("API calls: %v; want %v", events, want)
+	}
+	if !strings.Contains(output.String(), "DELETED 1") {
+		t.Fatal(output.String())
+	}
 }
 
 func TestDeleteWithCancelWaitsForCompletionThenDeletes(t *testing.T) {
@@ -212,8 +224,12 @@ func TestDeleteWithCancelWaitsForCompletionThenDeletes(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"list example-org/demo", "get 1", "cancel 1", "get 1", "delete 1", "get 2", "delete 2"}
-	if !reflect.DeepEqual(events, want) { t.Errorf("API calls: %v; want %v", events, want) }
-	if strings.Count(output.String(), "DELETED") != 2 { t.Error(output.String()) }
+	if !reflect.DeepEqual(events, want) {
+		t.Errorf("API calls: %v; want %v", events, want)
+	}
+	if strings.Count(output.String(), "DELETED") != 2 {
+		t.Error(output.String())
+	}
 }
 
 func TestDeleteWithCancelDryRunDoesNotCancel(t *testing.T) {
@@ -228,7 +244,9 @@ func TestDeleteWithCancelDryRunDoesNotCancel(t *testing.T) {
 	if !strings.Contains(out.String(), "WOULD CANCEL THEN DELETE 1") || !strings.Contains(out.String(), "WOULD DELETE 2") {
 		t.Errorf("dry-run: %s", out.String())
 	}
-	if !reflect.DeepEqual(events, []string{"list example-org/demo"}) { t.Fatal(events) }
+	if !reflect.DeepEqual(events, []string{"list example-org/demo"}) {
+		t.Fatal(events)
+	}
 }
 
 func TestDeleteCancelTimeoutPreservesRun(t *testing.T) {
@@ -239,9 +257,13 @@ func TestDeleteCancelTimeoutPreservesRun(t *testing.T) {
 	api.sleep = func(time.Duration) {}
 	var out bytes.Buffer
 	err := actionsCommand([]string{"delete", "--repo", "example-org/demo", "--state", "in_progress", "--with-cancel", "--yes"}, api, &out)
-	if err == nil || !strings.Contains(err.Error(), "not deleted") { t.Errorf("expected timeout: %v", err) }
+	if err == nil || !strings.Contains(err.Error(), "not deleted") {
+		t.Errorf("expected timeout: %v", err)
+	}
 	for _, event := range events {
-		if strings.HasPrefix(event, "delete ") { t.Fatalf("deleted running workflow run: %v", events) }
+		if strings.HasPrefix(event, "delete ") {
+			t.Fatalf("deleted running workflow run: %v", events)
+		}
 	}
 }
 
@@ -262,24 +284,31 @@ func TestDeletionRechecksStatusAndSkipsChangedConclusion(t *testing.T) {
 }
 
 func TestActionsListFailureDoesNotMutate(t *testing.T) {
-	api := actionsAPI{list:func(string)([]workflowRun,error){return nil,errors.New("GitHub unavailable")}}
-	err := actionsCommand([]string{"delete", "--repo", "example-org/demo", "--state", "all", "--yes"},api,&bytes.Buffer{})
-	if err == nil || !strings.Contains(err.Error(),"GitHub unavailable"){t.Fatal(err)}
+	api := actionsAPI{list: func(string) ([]workflowRun, error) { return nil, errors.New("GitHub unavailable") }}
+	err := actionsCommand([]string{"delete", "--repo", "example-org/demo", "--state", "all", "--yes"}, api, &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "GitHub unavailable") {
+		t.Fatal(err)
+	}
 }
 
 func TestActionsHelpWorksWithoutAssetsAndShowsAllPossibleStates(t *testing.T) {
 	t.Setenv("GITHUB_RUNNER_CLI_ENV", t.TempDir()+"/missing")
 	for _, args := range [][]string{
-		{"actions","help"},
-		{"actions","list","--help"},
-		{"actions","cancel","help"},
-		{"actions","delete","--help"},
-		{"help","actions","delete"},
+		{"actions", "help"},
+		{"actions", "list", "--help"},
+		{"actions", "cancel", "help"},
+		{"actions", "delete", "--help"},
+		{"help", "actions", "delete"},
 	} {
-		out,err := captureCLI(t,args...)
-		if err != nil {t.Errorf("help %v: %v",args,err);continue}
+		out, err := captureCLI(t, args...)
+		if err != nil {
+			t.Errorf("help %v: %v", args, err)
+			continue
+		}
 		for _, expected := range []string{"AVAILABLE STATES:", "success", "failure", "cancelled", "timed_out", "in_progress", "queued", "completed", "EXAMPLES:"} {
-			if !strings.Contains(out,expected){t.Errorf("help %v missing %q",args,expected)}
+			if !strings.Contains(out, expected) {
+				t.Errorf("help %v missing %q", args, expected)
+			}
 		}
 	}
 }
@@ -288,53 +317,71 @@ func TestFetchAllWorkflowRunsPaginatesBeforeMutation(t *testing.T) {
 	var endpoints []string
 	makePage := func(ids []workflowRun, count int) []byte {
 		payload, err := json.Marshal(struct {
-			TotalCount int           `json:"total_count"`
+			TotalCount   int           `json:"total_count"`
 			WorkflowRuns []workflowRun `json:"workflow_runs"`
-		}{TotalCount:count, WorkflowRuns:ids})
-		if err != nil { t.Fatal(err) }
+		}{TotalCount: count, WorkflowRuns: ids})
+		if err != nil {
+			t.Fatal(err)
+		}
 		return payload
 	}
-	page1:=make([]workflowRun,100)
-	for i:=range page1 {page1[i]=runFixture(int64(i+1),"completed","failure")}
-	page2:=[]workflowRun{runFixture(101,"completed","success")}
-	runs,err:=fetchAllWorkflowRuns("example-org/demo",func(endpoint string)([]byte,error){
-		endpoints=append(endpoints,endpoint)
-		if strings.Contains(endpoint,"page=1"){return makePage(page1,101),nil}
-		if strings.Contains(endpoint,"page=2"){return makePage(page2,101),nil}
-		return nil,fmt.Errorf("unexpected page %q",endpoint)
+	page1 := make([]workflowRun, 100)
+	for i := range page1 {
+		page1[i] = runFixture(int64(i+1), "completed", "failure")
+	}
+	page2 := []workflowRun{runFixture(101, "completed", "success")}
+	runs, err := fetchAllWorkflowRuns("example-org/demo", func(endpoint string) ([]byte, error) {
+		endpoints = append(endpoints, endpoint)
+		if strings.Contains(endpoint, "page=1") {
+			return makePage(page1, 101), nil
+		}
+		if strings.Contains(endpoint, "page=2") {
+			return makePage(page2, 101), nil
+		}
+		return nil, fmt.Errorf("unexpected page %q", endpoint)
 	})
-	if err!=nil{t.Fatal(err)}
-	if len(runs)!=101||len(endpoints)!=2||runs[100].ID!=101{t.Fatalf("pagination runs=%d endpoints=%v",len(runs),endpoints)}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runs) != 101 || len(endpoints) != 2 || runs[100].ID != 101 {
+		t.Fatalf("pagination runs=%d endpoints=%v", len(runs), endpoints)
+	}
 }
 
 func TestFetchAllWorkflowRunsRejectsIncompleteOrDuplicatedPages(t *testing.T) {
-	tests:=[]struct{
-		name string
-		body []byte
+	tests := []struct {
+		name         string
+		body         []byte
 		errorMessage string
 	}{
-		{"incomplete",[]byte(`{"total_count":7,"workflow_runs":[{"id":1,"status":"completed"}]}`),"partial result"},
-		{"badJSON",[]byte(`{ broken`),"invalid"},
-		{"duplicate",[]byte(`{"total_count":2,"workflow_runs":[{"id":1},{"id":1}]}`),"duplicate"},
-		{"invalidID",[]byte(`{"total_count":1,"workflow_runs":[{"id":0}]}`),"invalid run"},
+		{"incomplete", []byte(`{"total_count":7,"workflow_runs":[{"id":1,"status":"completed"}]}`), "partial result"},
+		{"badJSON", []byte(`{ broken`), "invalid"},
+		{"duplicate", []byte(`{"total_count":2,"workflow_runs":[{"id":1},{"id":1}]}`), "duplicate"},
+		{"invalidID", []byte(`{"total_count":1,"workflow_runs":[{"id":0}]}`), "invalid run"},
 	}
-	for _,tc:=range tests{
-		t.Run(tc.name,func(t *testing.T){
-			_,err:=fetchAllWorkflowRuns("example-org/demo",func(string)([]byte,error){return tc.body,nil})
-			if err==nil||!strings.Contains(err.Error(),tc.errorMessage){t.Fatalf("%s expected failure: %v",tc.name,err)}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := fetchAllWorkflowRuns("example-org/demo", func(string) ([]byte, error) { return tc.body, nil })
+			if err == nil || !strings.Contains(err.Error(), tc.errorMessage) {
+				t.Fatalf("%s expected failure: %v", tc.name, err)
+			}
 		})
 	}
 }
 
 func TestCancelStatusChangedBeforeExecutionIsSkipped(t *testing.T) {
-	run:=runFixture(1,"in_progress","")
-	events:=[]string{}
-	api:=fixtureActionsAPI([]workflowRun{run},&events)
-	api.get=func(string,int64)(workflowRun,error){
-		events=append(events,"get")
-		return runFixture(1,"queued",""),nil
+	run := runFixture(1, "in_progress", "")
+	events := []string{}
+	api := fixtureActionsAPI([]workflowRun{run}, &events)
+	api.get = func(string, int64) (workflowRun, error) {
+		events = append(events, "get")
+		return runFixture(1, "queued", ""), nil
 	}
-	err:=actionsCommand([]string{"cancel","--repo","example-org/demo","--state","in_progress","--yes"},api,&bytes.Buffer{})
-	if err!=nil{t.Fatal(err)}
-	if !reflect.DeepEqual(events,[]string{"list example-org/demo","get"}){t.Fatalf("cancelled a changed state: %v",events)}
+	err := actionsCommand([]string{"cancel", "--repo", "example-org/demo", "--state", "in_progress", "--yes"}, api, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(events, []string{"list example-org/demo", "get"}) {
+		t.Fatalf("cancelled a changed state: %v", events)
+	}
 }
