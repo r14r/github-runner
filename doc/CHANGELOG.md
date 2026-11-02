@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.2 — Tail-follow only monitor
+
+- `ghr monitor --repo OWNER/REPO` streams **only container logs**
+  using a single `docker logs --follow --tail N` process, like `tail -f`.
+- Remove all status polling, GitHub Actions run tables, headers and repeated
+  log snapshots from the monitor command.
+- Initial tail defaults to 10 lines (like `tail -f`). Set
+  `RUNNER_MONITOR_TAIL=0` for only newly emitted lines.
+- Remove the old polling interval `RUNNER_MONITOR_SECONDS` behavior.
+- Tests verify exactly one Docker stream, absence of GitHub/status requests,
+  argument validation and propagation of Docker errors.
+
+
 ## 0.5.1 — Safe automatic runner refresh
 
 - `ghr refresh --repo OWNER/REPO` now stops, replaces and restarts an already-running **idle** runner automatically.
