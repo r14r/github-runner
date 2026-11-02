@@ -69,7 +69,9 @@ func fullDoctor(r dockerRunner) error {
 				return fmt.Errorf("%s not installed; run ghr install --repo %s", r.Container, r.Repo)
 			}
 			state, err := r.docker("container", "inspect", "--format", "{{.State.Status}}", r.Container)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			fmt.Fprintf(out, "    Container: %s\n    State:     %s\n", r.Container, state)
 			if state != "running" {
 				return fmt.Errorf("container is %s; run ghr start --repo %s", state, r.Repo)
@@ -87,7 +89,9 @@ func fullDoctor(r dockerRunner) error {
 		},
 		registration: func(out io.Writer) (runnerIdentity, error) {
 			local, err := inspectLocal(r.Slug)
-			if err != nil { return runnerIdentity{}, err }
+			if err != nil {
+				return runnerIdentity{}, err
+			}
 			if !existingVolume(r.Volume) {
 				return runnerIdentity{}, fmt.Errorf("registration volume %s not found", r.Volume)
 			}
@@ -102,26 +106,44 @@ func fullDoctor(r dockerRunner) error {
 		},
 		github: func(out io.Writer, id runnerIdentity) error {
 			registered, err := githubRunners(r.Repo)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			record, err := matchedRegistration(id, registered)
-			if err != nil { return err }
-			if record == nil { return fmt.Errorf("%s (ID %d) not registered with GitHub", id.AgentName, id.AgentID) }
+			if err != nil {
+				return err
+			}
+			if record == nil {
+				return fmt.Errorf("%s (ID %d) not registered with GitHub", id.AgentName, id.AgentID)
+			}
 			fmt.Fprintf(out, "    Name:   %s\n    Status: %s\n    Busy:   %t\n", record.Name, record.Status, record.Busy)
-			if err := verifyGitHubDoctorRunner(*record, r.Slug); err != nil { return err }
+			if err := verifyGitHubDoctorRunner(*record, r.Slug); err != nil {
+				return err
+			}
 			return nil
 		},
 		workflows: func(out io.Writer) error {
 			dir, cleanup, err := cloneDoctorWorkflowDirectory(r.Repo)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			defer cleanup()
 			return checkDoctorWorkflowDirectory(dir, out)
 		},
 		variable: func(out io.Writer) error {
 			data, err := commandOutput("", "gh", "api", "repos/"+r.Repo+"/actions/variables/RUNNER_LABELS_JSON")
-			if err != nil { return fmt.Errorf("RUNNER_LABELS_JSON missing or inaccessible; set it with 'gh variable set RUNNER_LABELS_JSON --repo %s --body ...': %w", r.Repo, err) }
-			var response struct { Value string `json:"value"` }
-			if err := json.Unmarshal([]byte(data), &response); err != nil { return fmt.Errorf("invalid GitHub variable API response: %w", err) }
-			if err := validateDoctorRunnerVariable(response.Value, r.Slug); err != nil { return err }
+			if err != nil {
+				return fmt.Errorf("RUNNER_LABELS_JSON missing or inaccessible; set it with 'gh variable set RUNNER_LABELS_JSON --repo %s --body ...': %w", r.Repo, err)
+			}
+			var response struct {
+				Value string `json:"value"`
+			}
+			if err := json.Unmarshal([]byte(data), &response); err != nil {
+				return fmt.Errorf("invalid GitHub variable API response: %w", err)
+			}
+			if err := validateDoctorRunnerVariable(response.Value, r.Slug); err != nil {
+				return err
+			}
 			fmt.Fprintf(out, "    RUNNER_LABELS_JSON: %s\n", response.Value)
 			return nil
 		},
@@ -129,19 +151,31 @@ func fullDoctor(r dockerRunner) error {
 }
 
 func verifyGitHubDoctorRunner(record runnerRecord, slug string) error {
-	if record.Status != "online" { return fmt.Errorf("GitHub runner is %s, expected online", record.Status) }
-	if record.Busy { return errors.New("GitHub runner is busy (not idle); retry after the current job") }
+	if record.Status != "online" {
+		return fmt.Errorf("GitHub runner is %s, expected online", record.Status)
+	}
+	if record.Busy {
+		return errors.New("GitHub runner is busy (not idle); retry after the current job")
+	}
 	required := map[string]bool{
-		"self-hosted": false, "linux": false, "x64": false, "repo-"+strings.ToLower(slug): false,
+		"self-hosted": false, "linux": false, "x64": false, "repo-" + strings.ToLower(slug): false,
 	}
 	for _, label := range record.Labels {
 		key := strings.ToLower(label.Name)
-		if _, exists := required[key]; exists { required[key] = true }
+		if _, exists := required[key]; exists {
+			required[key] = true
+		}
 	}
 	missing := []string{}
-	for label, found := range required { if !found { missing = append(missing, label) } }
+	for label, found := range required {
+		if !found {
+			missing = append(missing, label)
+		}
+	}
 	sort.Strings(missing)
-	if len(missing) > 0 { return fmt.Errorf("GitHub runner is missing labels: %s", strings.Join(missing, ", ")) }
+	if len(missing) > 0 {
+		return fmt.Errorf("GitHub runner is missing labels: %s", strings.Join(missing, ", "))
+	}
 	return nil
 }
 
@@ -150,15 +184,23 @@ func validateDoctorRunnerVariable(value, slug string) error {
 	if err := json.Unmarshal([]byte(value), &labels); err != nil {
 		return fmt.Errorf("RUNNER_LABELS_JSON must contain a JSON array of runner labels: %w", err)
 	}
-	required := map[string]bool{"self-hosted": false, "linux": false, "x64": false, "repo-"+strings.ToLower(slug): false}
+	required := map[string]bool{"self-hosted": false, "linux": false, "x64": false, "repo-" + strings.ToLower(slug): false}
 	for _, label := range labels {
 		key := strings.ToLower(strings.TrimSpace(label))
-		if _, found := required[key]; found { required[key] = true }
+		if _, found := required[key]; found {
+			required[key] = true
+		}
 	}
 	missing := []string{}
-	for label, found := range required { if !found { missing = append(missing, label) } }
+	for label, found := range required {
+		if !found {
+			missing = append(missing, label)
+		}
+	}
 	sort.Strings(missing)
-	if len(missing) > 0 { return fmt.Errorf("RUNNER_LABELS_JSON lacks required labels: %s", strings.Join(missing, ", ")) }
+	if len(missing) > 0 {
+		return fmt.Errorf("RUNNER_LABELS_JSON lacks required labels: %s", strings.Join(missing, ", "))
+	}
 	return nil
 }
 
@@ -167,7 +209,11 @@ var doctorRunsOn = regexp.MustCompile(`^    runs-on:\s*(.*?)\s*$`)
 var doctorReusableJob = regexp.MustCompile(`^    uses:\s*\S+`)
 var doctorRunnerVariable = regexp.MustCompile(`(?i)fromJSON\s*\(\s*vars\.RUNNER_LABELS_JSON\b`)
 
-type doctorWorkflowResult struct { filename string; count, checked, reusable int; problems []string }
+type doctorWorkflowResult struct {
+	filename                 string
+	count, checked, reusable int
+	problems                 []string
+}
 
 func checkDoctorWorkflowSource(name string, data []byte) doctorWorkflowResult {
 	result := doctorWorkflowResult{filename: name}
@@ -176,7 +222,9 @@ func checkDoctorWorkflowSource(name string, data []byte) doctorWorkflowResult {
 	runsOn := ""
 	reusable := false
 	flush := func() {
-		if job == "" { return }
+		if job == "" {
+			return
+		}
 		result.count++
 		switch {
 		case strings.Contains(runsOn, "${{") && strings.Contains(runsOn, "}}") && doctorRunnerVariable.MatchString(runsOn):
@@ -192,26 +240,38 @@ func checkDoctorWorkflowSource(name string, data []byte) doctorWorkflowResult {
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSuffix(line, "\r")
 		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") { continue }
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
 		if !strings.HasPrefix(line, " ") {
-			flush(); job = ""; runsOn = ""; reusable = false
+			flush()
+			job = ""
+			runsOn = ""
+			reusable = false
 			inJobs = trimmed == "jobs:"
 			continue
 		}
-		if !inJobs { continue }
+		if !inJobs {
+			continue
+		}
 		if match := doctorWorkflowJob.FindStringSubmatch(line); match != nil {
-			flush(); job, runsOn, reusable = match[1], "", false
+			flush()
+			job, runsOn, reusable = match[1], "", false
 			continue
 		}
 		if job != "" {
 			if match := doctorRunsOn.FindStringSubmatch(line); match != nil {
 				runsOn = strings.TrimSpace(strings.SplitN(match[1], " #", 2)[0])
 			}
-			if doctorReusableJob.MatchString(line) { reusable = true }
+			if doctorReusableJob.MatchString(line) {
+				reusable = true
+			}
 		}
 	}
 	flush()
-	if result.count == 0 { result.problems = append(result.problems, name+": no job definitions detected") }
+	if result.count == 0 {
+		result.problems = append(result.problems, name+": no job definitions detected")
+	}
 	return result
 }
 
@@ -220,41 +280,68 @@ func checkDoctorWorkflowDirectory(root string, out io.Writer) error {
 	files := []string{}
 	for _, extension := range []string{"*.yaml", "*.yml"} {
 		found, err := filepath.Glob(filepath.Join(dir, extension))
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		files = append(files, found...)
 	}
 	sort.Strings(files)
-	if len(files) == 0 { return errors.New("no .github/workflows/*.yaml or *.yml found") }
+	if len(files) == 0 {
+		return errors.New("no .github/workflows/*.yaml or *.yml found")
+	}
 	failures := []error{}
 	jobs := 0
 	for _, path := range files {
 		info, err := os.Lstat(path)
-		if err != nil { failures = append(failures, err); continue }
-		if !info.Mode().IsRegular() { failures = append(failures, fmt.Errorf("%s is not a regular workflow file", path)); continue }
+		if err != nil {
+			failures = append(failures, err)
+			continue
+		}
+		if !info.Mode().IsRegular() {
+			failures = append(failures, fmt.Errorf("%s is not a regular workflow file", path))
+			continue
+		}
 		data, err := os.ReadFile(path)
-		if err != nil { failures = append(failures, err); continue }
+		if err != nil {
+			failures = append(failures, err)
+			continue
+		}
 		r := checkDoctorWorkflowSource(filepath.Base(path), data)
-		jobs += r.count-r.reusable
+		jobs += r.count - r.reusable
 		fmt.Fprintf(out, "    %-30s %d/%d jobs use variable", r.filename, r.checked, r.count-r.reusable)
-		if r.reusable > 0 { fmt.Fprintf(out, " (%d reusable job(s) exempt)", r.reusable) }
+		if r.reusable > 0 {
+			fmt.Fprintf(out, " (%d reusable job(s) exempt)", r.reusable)
+		}
 		fmt.Fprintln(out)
-		for _, item := range r.problems { failures = append(failures, errors.New(item)) }
+		for _, item := range r.problems {
+			failures = append(failures, errors.New(item))
+		}
 	}
-	if jobs == 0 { failures = append(failures, errors.New("no locally scheduled workflow jobs found")) }
-	if len(failures) > 0 { return errors.Join(failures...) }
+	if jobs == 0 {
+		failures = append(failures, errors.New("no locally scheduled workflow jobs found"))
+	}
+	if len(failures) > 0 {
+		return errors.Join(failures...)
+	}
 	return nil
 }
 
 func cloneDoctorWorkflowDirectory(repo string) (string, func(), error) {
-	if _, err := os.Stat(os.TempDir()); err != nil { return "", nil, err }
+	if _, err := os.Stat(os.TempDir()); err != nil {
+		return "", nil, err
+	}
 	dir, err := os.MkdirTemp("", "ghr-doctor-workflows-")
-	if err != nil { return "", nil, err }
+	if err != nil {
+		return "", nil, err
+	}
 	cleanup := func() { _ = os.RemoveAll(dir) }
 	if err := capturedGit("", "gh", "repo", "clone", repo, dir, "--", "--depth=1", "--filter=blob:none", "--sparse", "--quiet"); err != nil {
-		cleanup(); return "", nil, fmt.Errorf("cannot clone %s: %w", repo, err)
+		cleanup()
+		return "", nil, fmt.Errorf("cannot clone %s: %w", repo, err)
 	}
 	if err := capturedGit(dir, "git", "sparse-checkout", "set", ".github/workflows"); err != nil {
-		cleanup(); return "", nil, fmt.Errorf("cannot check out workflows: %w", err)
+		cleanup()
+		return "", nil, fmt.Errorf("cannot check out workflows: %w", err)
 	}
 	return dir, cleanup, nil
 }
