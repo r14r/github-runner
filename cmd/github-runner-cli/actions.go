@@ -258,7 +258,9 @@ func fetchWorkflowRunWindow(repo, state string, start, end time.Time, request fu
 	}
 	created := isoSecond(start) + ".." + isoSecond(end)
 	first, err := fetchWorkflowRunsPage(repo, state, created, 1, request)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	if first.TotalCount < githubActionsSearchCap {
 		return collectWorkflowRunPages(repo, state, created, first, request)
 	}
@@ -269,14 +271,20 @@ func fetchWorkflowRunWindow(repo, state string, start, end time.Time, request fu
 		return nil, fmt.Errorf("%d+ Actions runs created in one second; GitHub REST search cannot enumerate all safely", githubActionsSearchCap)
 	}
 	middle := startSecond + (endSecond-startSecond)/2
-	left, err := fetchWorkflowRunWindow(repo, state, time.Unix(startSecond,0), time.Unix(middle,0), request, depth+1)
-	if err != nil { return nil, err }
-	right, err := fetchWorkflowRunWindow(repo, state, time.Unix(middle+1,0), time.Unix(endSecond,0), request, depth+1)
-	if err != nil { return nil, err }
+	left, err := fetchWorkflowRunWindow(repo, state, time.Unix(startSecond, 0), time.Unix(middle, 0), request, depth+1)
+	if err != nil {
+		return nil, err
+	}
+	right, err := fetchWorkflowRunWindow(repo, state, time.Unix(middle+1, 0), time.Unix(endSecond, 0), request, depth+1)
+	if err != nil {
+		return nil, err
+	}
 	found := map[int64]bool{}
 	result := make([]workflowRun, 0, len(left)+len(right))
 	for _, run := range append(left, right...) {
-		if found[run.ID] { return nil, fmt.Errorf("duplicate Actions run %d across date windows; retry without deleting anything", run.ID) }
+		if found[run.ID] {
+			return nil, fmt.Errorf("duplicate Actions run %d across date windows; retry without deleting anything", run.ID)
+		}
 		found[run.ID] = true
 		result = append(result, run)
 	}
@@ -285,14 +293,16 @@ func fetchWorkflowRunWindow(repo, state string, start, end time.Time, request fu
 
 func fetchWorkflowRunSnapshot(repo, state string, request func(string) ([]byte, error), now time.Time) ([]workflowRun, error) {
 	first, err := fetchWorkflowRunsPage(repo, state, "", 1, request)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	if state == "all" || first.TotalCount < githubActionsSearchCap {
 		return collectWorkflowRunPages(repo, state, "", first, request)
 	}
 	// GitHub caps each filtered search at 1,000 runs. Partition by
 	// creation second to avoid silently missing older failed jobs.
 	start := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
-	end := now.UTC().Add(24*time.Hour).Truncate(time.Second)
+	end := now.UTC().Add(24 * time.Hour).Truncate(time.Second)
 	return fetchWorkflowRunWindow(repo, state, start, end, request, 0)
 }
 

@@ -388,60 +388,85 @@ func TestCancelStatusChangedBeforeExecutionIsSkipped(t *testing.T) {
 
 func TestFilteredSearchUsesServerSideStatus(t *testing.T) {
 	var endpoints []string
-	jsonPage:=[]byte(`{"total_count":2,"workflow_runs":[{"id":100,"status":"completed","conclusion":"failure"},{"id":101,"status":"completed","conclusion":"failure"}]}`)
-	runs, err := fetchWorkflowRunSnapshot("example-org/demo","failure",func(endpoint string)([]byte,error){
-		endpoints=append(endpoints,endpoint)
-		return jsonPage,nil
-	},time.Date(2026,11,2,0,0,0,0,time.UTC))
-	if err!=nil{t.Fatal(err)}
-	if len(runs)!=2||len(endpoints)!=1||!strings.Contains(endpoints[0],"status=failure"){
-		t.Errorf("expected one server-side failure filter, got %v; runs=%v",endpoints,runs)
+	jsonPage := []byte(`{"total_count":2,"workflow_runs":[{"id":100,"status":"completed","conclusion":"failure"},{"id":101,"status":"completed","conclusion":"failure"}]}`)
+	runs, err := fetchWorkflowRunSnapshot("example-org/demo", "failure", func(endpoint string) ([]byte, error) {
+		endpoints = append(endpoints, endpoint)
+		return jsonPage, nil
+	}, time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runs) != 2 || len(endpoints) != 1 || !strings.Contains(endpoints[0], "status=failure") {
+		t.Errorf("expected one server-side failure filter, got %v; runs=%v", endpoints, runs)
 	}
 }
 
 func TestFilteredSearchPartitionsOverThousandRunGitHubCap(t *testing.T) {
 	var endpoints []string
-	now:=time.Date(2026,11,2,10,0,0,0,time.UTC)
-	runs,err:=fetchWorkflowRunSnapshot("example-org/demo","failure",func(endpoint string)([]byte,error){
-		endpoints=append(endpoints,endpoint)
-		if !strings.Contains(endpoint,"status=failure"){return nil,fmt.Errorf("missing status filter: %s",endpoint)}
-		if !strings.Contains(endpoint,"created="){return []byte(`{"total_count":1000,"workflow_runs":[{"id":1,"status":"completed","conclusion":"failure"}]}`),nil}
-		if strings.Contains(endpoint,"2018-01-01"){return []byte(`{"total_count":1,"workflow_runs":[{"id":1,"status":"completed","conclusion":"failure"}]}`),nil}
-		return []byte(`{"total_count":1,"workflow_runs":[{"id":2,"status":"completed","conclusion":"failure"}]}`),nil
-	},now)
-	if err!=nil{t.Fatal(err)}
-	if len(runs)!=2||len(endpoints)!=3{t.Errorf("expected 2 shards and 2 runs, got %d and %v",len(runs),endpoints)}
-	for _,endpoint:=range endpoints[1:]{
-		if !strings.Contains(endpoint,"created="){t.Errorf("missing date shard: %s",endpoint)}
+	now := time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
+	runs, err := fetchWorkflowRunSnapshot("example-org/demo", "failure", func(endpoint string) ([]byte, error) {
+		endpoints = append(endpoints, endpoint)
+		if !strings.Contains(endpoint, "status=failure") {
+			return nil, fmt.Errorf("missing status filter: %s", endpoint)
+		}
+		if !strings.Contains(endpoint, "created=") {
+			return []byte(`{"total_count":1000,"workflow_runs":[{"id":1,"status":"completed","conclusion":"failure"}]}`), nil
+		}
+		if strings.Contains(endpoint, "2018-01-01") {
+			return []byte(`{"total_count":1,"workflow_runs":[{"id":1,"status":"completed","conclusion":"failure"}]}`), nil
+		}
+		return []byte(`{"total_count":1,"workflow_runs":[{"id":2,"status":"completed","conclusion":"failure"}]}`), nil
+	}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runs) != 2 || len(endpoints) != 3 {
+		t.Errorf("expected 2 shards and 2 runs, got %d and %v", len(runs), endpoints)
+	}
+	for _, endpoint := range endpoints[1:] {
+		if !strings.Contains(endpoint, "created=") {
+			t.Errorf("missing date shard: %s", endpoint)
+		}
 	}
 }
 
 func TestFilteredSearchRejectsUnpartitionableResults(t *testing.T) {
-	now:=time.Date(2026,11,2,10,0,0,0,time.UTC)
-	_,err:=fetchWorkflowRunWindow("example-org/demo","failure",now,now,func(string)([]byte,error){
-		return []byte(`{"total_count":1000,"workflow_runs":[]}`),nil
-	},0)
-	if err==nil||!strings.Contains(err.Error(),"cannot enumerate all safely"){t.Fatalf("expected failure for >1000 same-second records: %v",err)}
+	now := time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
+	_, err := fetchWorkflowRunWindow("example-org/demo", "failure", now, now, func(string) ([]byte, error) {
+		return []byte(`{"total_count":1000,"workflow_runs":[]}`), nil
+	}, 0)
+	if err == nil || !strings.Contains(err.Error(), "cannot enumerate all safely") {
+		t.Fatalf("expected failure for >1000 same-second records: %v", err)
+	}
 }
 
 func TestFilteredSearchRejectsWrongStateFromGitHub(t *testing.T) {
-	_,err:=fetchWorkflowRunSnapshot("example-org/demo","failure",func(string)([]byte,error){
-		return []byte(`{"total_count":1,"workflow_runs":[{"id":42,"status":"completed","conclusion":"success"}]}`),nil
-	},time.Now())
-	if err==nil||!strings.Contains(err.Error(),"outside --state"){t.Fatalf("unexpected response accepted: %v",err)}
+	_, err := fetchWorkflowRunSnapshot("example-org/demo", "failure", func(string) ([]byte, error) {
+		return []byte(`{"total_count":1,"workflow_runs":[{"id":42,"status":"completed","conclusion":"success"}]}`), nil
+	}, time.Now())
+	if err == nil || !strings.Contains(err.Error(), "outside --state") {
+		t.Fatalf("unexpected response accepted: %v", err)
+	}
 }
 
 func TestFilteredBulkDeletePassesStateToAPI(t *testing.T) {
 	var selectedState string
 	var ops []string
-	api:=actionsAPI{
-		list:func(repo,state string)([]workflowRun,error){
-			selectedState=state
-			return []workflowRun{runFixture(1,"completed","failure")},nil
+	api := actionsAPI{
+		list: func(repo, state string) ([]workflowRun, error) {
+			selectedState = state
+			return []workflowRun{runFixture(1, "completed", "failure")}, nil
 		},
-		get:func(string,int64)(workflowRun,error){ops=append(ops,"get");return runFixture(1,"completed","failure"),nil},
-		delete:func(string,int64)error{ops=append(ops,"delete");return nil},
+		get: func(string, int64) (workflowRun, error) {
+			ops = append(ops, "get")
+			return runFixture(1, "completed", "failure"), nil
+		},
+		delete: func(string, int64) error { ops = append(ops, "delete"); return nil },
 	}
-	if err:=actionsCommand([]string{"delete","--repo","example-org/demo","--state","failure","--yes"},api,&bytes.Buffer{});err!=nil{t.Fatal(err)}
-	if selectedState!="failure"||!reflect.DeepEqual(ops,[]string{"get","delete"}){t.Errorf("state=%s ops=%v",selectedState,ops)}
+	if err := actionsCommand([]string{"delete", "--repo", "example-org/demo", "--state", "failure", "--yes"}, api, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if selectedState != "failure" || !reflect.DeepEqual(ops, []string{"get", "delete"}) {
+		t.Errorf("state=%s ops=%v", selectedState, ops)
+	}
 }
