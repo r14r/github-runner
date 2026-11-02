@@ -74,6 +74,8 @@ func run(args []string, executable, cwd string) error {
 		return nil
 	case "self-uninstall":
 		return selfUninstall(executable, args[1:])
+	case "actions":
+		return actionsCommand(args[1:], newGitHubActionsAPI(), os.Stdout)
 	}
 	env, err := assetsDir(executable, cwd)
 	if err != nil {
