@@ -1,4 +1,4 @@
-# Go CLI v0.5.2 — repository-neutral runner manager
+# Go CLI v0.5.3 — repository-neutral runner manager
 
 ## Typical workflow
 
@@ -60,6 +60,40 @@ The default is the last 10 lines **once**, then continuous live streaming.
 `RUNNER_MONITOR_TAIL` accepts 0–1000. Setting it to `0` prints only
 new log entries. The obsolete `RUNNER_MONITOR_SECONDS` is ignored.
 `Ctrl+C` exits the monitor, not the runner.
+
+## GitHub Actions runs: list, cancel and delete
+
+```sh
+ghr actions list --repo OWNER/REPO [--state STATE]
+ghr actions cancel --repo OWNER/REPO [--state STATE] [--yes]
+ghr actions delete --repo OWNER/REPO [--state STATE] [--with-cancel] [--yes]
+
+ghr actions help
+ghr actions list --help
+ghr actions cancel --help
+ghr actions delete --help
+ghr actions delete help
+```
+
+All Actions subcommands require `--repo`; none require Docker runtime
+assets. The status filter is optional for listing/dry-runs, defaulting to
+`all`. The **mutating** variants require both `--yes` and explicit
+`--state` to avoid accidental bulk actions. Without `--yes`,
+`cancel` and `delete` preview the affected runs without altering GitHub.
+
+The CLI supports completed conclusions (`success`, `failure`,
+`cancelled`, `timed_out`, `action_required`, `neutral`,
+`skipped`, `stale`), `completed` itself, and active statuses
+(`queued`, `in_progress`, `waiting`, `pending`, `requested`).
+It also accepts `all` to match everything. Use
+`ghr actions delete help` to see every allowed value and meaning.
+
+`delete` without `--with-cancel` skips active runs.
+`delete --with-cancel` requests cancellation of matching active runs,
+waits for confirmation of completion (up to one minute), and only then
+deletes them. The GitHub run is rechecked before every destructive request;
+pagination is completed before deletion to avoid skipped runs. Failed
+GitHub API requests stop the operation. Run deletion cannot be undone.
 
 ## Runner state and compatibility
 
