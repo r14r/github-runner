@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.5 — Compact doctor output and BOM-tolerant identity
+
+- Show `ghr doctor` as six aligned rows: step number, green/red background
+  OK/FAIL badge, concise description, plus one aligned result row.
+- Remove the introductory header and repository banner from the doctor output.
+- Capture the nested Toolchain Doctor output and show its counts in one
+  summary cell without repeating sub-step headings or footer.
+- Suppress the duplicate error report emitted after the doctor summary.
+- Disable ANSI styling for redirected output or when `NO_COLOR` is set.
+- Ignore an optional leading UTF-8 BOM when parsing persisted runner
+  identity JSON; leave the Docker registration volume unchanged.
+- Preserve the standalone verbose toolchain diagnostics used by `ghr build`.
+- Add regression tests for alignment, ANSI badges, summary suppression,
+  failure reporting and BOM-prefixed identity data.
+
+
 ## 0.5.4 — Full runner doctor
 
 - Expand `ghr doctor --repo OWNER/REPO` to six read-only checks covering:
