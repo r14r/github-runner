@@ -1,0 +1,29 @@
+name: One-time Go format for bulk Actions selection
+on:
+  push:
+    branches:
+      - feat/actions-run-management-v0.5.3
+permissions:
+  contents: write
+jobs:
+  normalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/actions-run-management-v0.5.3
+          persist-credentials: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Format Go code once
+        run: |
+          gofmt -w cmd/github-runner-cli/actions.go cmd/github-runner-cli/actions_test.go
+          git diff --check
+          if ! git diff --quiet -- cmd/github-runner-cli/actions.go cmd/github-runner-cli/actions_test.go; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add cmd/github-runner-cli/actions.go cmd/github-runner-cli/actions_test.go
+            git commit -m "style: gofmt bulk Actions selection"
+            git push origin HEAD:feat/actions-run-management-v0.5.3
+          fi
