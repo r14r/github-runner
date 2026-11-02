@@ -281,9 +281,13 @@ func TestDoctorCompactLayoutNoHeadingOrNestedOutput(t *testing.T) {
 		fmt.Fprintln(w, `    RUNNER_LABELS_JSON: ["self-hosted","Linux","X64","repo-example-org-demo"]`)
 		return nil
 	}
-	if err := runFullDoctorWithColor(&out, "example-org/demo", checks, false); err != nil { t.Fatal(err) }
+	if err := runFullDoctorWithColor(&out, "example-org/demo", checks, false); err != nil {
+		t.Fatal(err)
+	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 7 { t.Fatalf("expected exactly six rows and summary (no headers/details), got %d: %q", len(lines), out.String()) }
+	if len(lines) != 7 {
+		t.Fatalf("expected exactly six rows and summary (no headers/details), got %d: %q", len(lines), out.String())
+	}
 	for i := 0; i < 6; i++ {
 		expected := fmt.Sprintf("%02d    OK    ", i+1)
 		if !strings.HasPrefix(lines[i], expected) {
@@ -297,7 +301,9 @@ func TestDoctorCompactLayoutNoHeadingOrNestedOutput(t *testing.T) {
 		t.Errorf("workflow summary missing: %s", lines[4])
 	}
 	for _, forbidden := range []string{"GitHub Runner — Full Doctor", "GitHub Runner — Toolchain Doctor", "01: Clone repository", "\nRepository:", "\nImage:"} {
-		if strings.Contains(out.String(), forbidden) { t.Errorf("nested title or unaligned output %q: %s", forbidden, out.String()) }
+		if strings.Contains(out.String(), forbidden) {
+			t.Errorf("nested title or unaligned output %q: %s", forbidden, out.String())
+		}
 	}
 }
 
@@ -305,15 +311,27 @@ func TestDoctorStatusBadgesColorAndAlignment(t *testing.T) {
 	for _, status := range []bool{true, false} {
 		plain := doctorBadge(status, false)
 		colored := doctorBadge(status, true)
-		if len(plain) != 6 { t.Errorf("status badge not fixed width: %q", plain) }
-		if !strings.Contains(colored, "\x1b[") || !strings.HasSuffix(colored, "\x1b[0m") { t.Errorf("missing terminal color/reset: %q", colored) }
-		if !strings.Contains(colored, plain) { t.Errorf("colored badge changes visible width: %q", colored) }
+		if len(plain) != 6 {
+			t.Errorf("status badge not fixed width: %q", plain)
+		}
+		if !strings.Contains(colored, "\x1b[") || !strings.HasSuffix(colored, "\x1b[0m") {
+			t.Errorf("missing terminal color/reset: %q", colored)
+		}
+		if !strings.Contains(colored, plain) {
+			t.Errorf("colored badge changes visible width: %q", colored)
+		}
 	}
 	calls := []string{}
 	var out bytes.Buffer
-	if err := runFullDoctorWithColor(&out, "test/repo", fakeFullDoctor("variable", &calls), true); err == nil { t.Fatal("failed doctor must return an error") }
-	if !strings.Contains(out.String(), "\x1b[97;41m FAIL \x1b[0m") { t.Fatalf("missing red error background: %q", out.String()) }
-	if !strings.Contains(out.String(), "\x1b[30;42m  OK  \x1b[0m") { t.Fatalf("missing green success background: %q", out.String()) }
+	if err := runFullDoctorWithColor(&out, "test/repo", fakeFullDoctor("variable", &calls), true); err == nil {
+		t.Fatal("failed doctor must return an error")
+	}
+	if !strings.Contains(out.String(), "\x1b[97;41m FAIL \x1b[0m") {
+		t.Fatalf("missing red error background: %q", out.String())
+	}
+	if !strings.Contains(out.String(), "\x1b[30;42m  OK  \x1b[0m") {
+		t.Fatalf("missing green success background: %q", out.String())
+	}
 }
 
 func TestDoctorErrorIsReportedOnceInRowAndSummary(t *testing.T) {
@@ -321,12 +339,16 @@ func TestDoctorErrorIsReportedOnceInRowAndSummary(t *testing.T) {
 	calls := []string{}
 	err := runFullDoctor(&out, "test/repo", fakeFullDoctor("registration", &calls))
 	var diagnosis *doctorFailure
-	if !errors.As(err, &diagnosis) { t.Fatalf("expected recognized doctorFailure type, got %v", err) }
+	if !errors.As(err, &diagnosis) {
+		t.Fatalf("expected recognized doctorFailure type, got %v", err)
+	}
 	if !strings.Contains(out.String(), "03   FAIL   Local runner registration — synthetic registration failure") {
 		t.Errorf("missing compact error detail: %s", out.String())
 	}
 	if !strings.Contains(out.String(), "04   FAIL   GitHub runner status and labels — local registration not verified") {
 		t.Errorf("missing dependent check explanation: %s", out.String())
 	}
-	if !strings.Contains(out.String(), "RESULT: FAIL — 2 of 6") { t.Fatal(out.String()) }
+	if !strings.Contains(out.String(), "RESULT: FAIL — 2 of 6") {
+		t.Fatal(out.String())
+	}
 }
