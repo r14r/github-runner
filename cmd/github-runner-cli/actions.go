@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os/exec"
 	"strings"
 	"text/tabwriter"
@@ -60,7 +61,7 @@ type workflowRun struct {
 }
 
 type actionsAPI struct {
-	list   func(repo string) ([]workflowRun, error)
+	list   func(repo, state string) ([]workflowRun, error)
 	get    func(repo string, id int64) (workflowRun, error)
 	cancel func(repo string, id int64) error
 	delete func(repo string, id int64) error
@@ -175,49 +176,138 @@ func githubActionsRequest(method, endpoint string) ([]byte, error) {
 	return output, nil
 }
 
-// fetchAllWorkflowRuns gathers a complete, deduplicated snapshot before any
-// mutation. A short/missing page or API error never produces a partial result.
-func fetchAllWorkflowRuns(repo string, request func(endpoint string) ([]byte, error)) ([]workflowRun, error) {
-	runs := []workflowRun{}
+// GitHub REST supports server-side status/conclusion filters, unlike
+// GraphQL's WorkflowRun schema. Filtered REST searches are capped at
+// 1,000 results. Split the created-at interval recursively, then fetch
+// every page before starting a bulk destructive operation.
+const githubActionsSearchCap = 1000
+
+type workflowRunsResponse struct {
+	TotalCount   int           `json:"total_count"`
+	WorkflowRuns []workflowRun `json:"workflow_runs"`
+}
+
+func workflowRunsEndpoint(repo, state, created string, page int) string {
+	endpoint := fmt.Sprintf("repos/%s/actions/runs?per_page=%d&page=%d", repo, actionsPageSize, page)
+	if state != "all" {
+		endpoint += "&status=" + url.QueryEscape(state)
+	}
+	if created != "" {
+		endpoint += "&created=" + url.QueryEscape(created)
+	}
+	return endpoint
+}
+
+func fetchWorkflowRunsPage(repo, state, created string, page int, request func(string) ([]byte, error)) (workflowRunsResponse, error) {
+	var result workflowRunsResponse
+	endpoint := workflowRunsEndpoint(repo, state, created, page)
+	raw, err := request(endpoint)
+	if err != nil {
+		return result, fmt.Errorf("cannot retrieve Actions runs page %d: %w", page, err)
+	}
+	if err = json.Unmarshal(raw, &result); err != nil {
+		return result, fmt.Errorf("invalid Actions runs page %d: %w", page, err)
+	}
+	if result.TotalCount < 0 || len(result.WorkflowRuns) > actionsPageSize {
+		return result, fmt.Errorf("invalid Actions result size on page %d", page)
+	}
+	return result, nil
+}
+
+func collectWorkflowRunPages(repo, state, created string, first workflowRunsResponse, request func(string) ([]byte, error)) ([]workflowRun, error) {
+	runs := make([]workflowRun, 0, first.TotalCount)
 	seen := map[int64]bool{}
+	expected := first.TotalCount
 	for page := 1; page <= maxActionsPages; page++ {
-		endpoint := fmt.Sprintf("repos/%s/actions/runs?per_page=%d&page=%d", repo, actionsPageSize, page)
-		data, err := request(endpoint)
-		if err != nil {
-			return nil, fmt.Errorf("cannot retrieve workflow run page %d: %w", page, err)
-		}
-		var response struct {
-			TotalCount   int           `json:"total_count"`
-			WorkflowRuns []workflowRun `json:"workflow_runs"`
-		}
-		if err := json.Unmarshal(data, &response); err != nil {
-			return nil, fmt.Errorf("invalid GitHub Actions run page %d: %w", page, err)
+		response := first
+		if page > 1 {
+			var err error
+			response, err = fetchWorkflowRunsPage(repo, state, created, page, request)
+			if err != nil {
+				return nil, err
+			}
+			if response.TotalCount != expected {
+				return nil, fmt.Errorf("Actions run count changed during pagination; retry without modifying any runs")
+			}
 		}
 		for _, item := range response.WorkflowRuns {
 			if item.ID <= 0 || seen[item.ID] {
-				return nil, fmt.Errorf("unexpected duplicate/invalid run ID on page %d", page)
+				return nil, fmt.Errorf("duplicate/invalid run ID on page %d", page)
+			}
+			if state != "all" && !stateMatchesRun(item, state) {
+				return nil, fmt.Errorf("GitHub returned run %d outside --state %s", item.ID, state)
 			}
 			seen[item.ID] = true
 			runs = append(runs, item)
 		}
-		if len(response.WorkflowRuns) < actionsPageSize {
-			if response.TotalCount > len(runs) {
-				// GitHub may cap search results. Never silently perform
-				// a partial bulk destructive operation.
-				return nil, fmt.Errorf("GitHub returned only %d of %d workflow runs; refusing partial result", len(runs), response.TotalCount)
-			}
+		if len(runs) == expected {
 			return runs, nil
 		}
+		if len(response.WorkflowRuns) == 0 || len(runs) > expected || len(response.WorkflowRuns) < actionsPageSize {
+			return nil, fmt.Errorf("GitHub returned only %d of %d workflow runs; refusing partial result", len(runs), expected)
+		}
 	}
-	return nil, fmt.Errorf("workflow run list exceeds %d pages; refusing partial result", maxActionsPages)
+	return nil, fmt.Errorf("Actions result exceeds %d pages; refusing partial bulk operation", maxActionsPages)
+}
+
+func isoSecond(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05Z") }
+
+func fetchWorkflowRunWindow(repo, state string, start, end time.Time, request func(string) ([]byte, error), depth int) ([]workflowRun, error) {
+	if depth > 64 || end.Before(start) {
+		return nil, fmt.Errorf("invalid or too-deep Actions created-at partition")
+	}
+	created := isoSecond(start) + ".." + isoSecond(end)
+	first, err := fetchWorkflowRunsPage(repo, state, created, 1, request)
+	if err != nil { return nil, err }
+	if first.TotalCount < githubActionsSearchCap {
+		return collectWorkflowRunPages(repo, state, created, first, request)
+	}
+	// Inclusive boundaries at one-second resolution. Fail closed if one
+	// second contains >=1000 runs (cannot subdivide accurately).
+	startSecond, endSecond := start.Unix(), end.Unix()
+	if endSecond <= startSecond {
+		return nil, fmt.Errorf("%d+ Actions runs created in one second; GitHub REST search cannot enumerate all safely", githubActionsSearchCap)
+	}
+	middle := startSecond + (endSecond-startSecond)/2
+	left, err := fetchWorkflowRunWindow(repo, state, time.Unix(startSecond,0), time.Unix(middle,0), request, depth+1)
+	if err != nil { return nil, err }
+	right, err := fetchWorkflowRunWindow(repo, state, time.Unix(middle+1,0), time.Unix(endSecond,0), request, depth+1)
+	if err != nil { return nil, err }
+	found := map[int64]bool{}
+	result := make([]workflowRun, 0, len(left)+len(right))
+	for _, run := range append(left, right...) {
+		if found[run.ID] { return nil, fmt.Errorf("duplicate Actions run %d across date windows; retry without deleting anything", run.ID) }
+		found[run.ID] = true
+		result = append(result, run)
+	}
+	return result, nil
+}
+
+func fetchWorkflowRunSnapshot(repo, state string, request func(string) ([]byte, error), now time.Time) ([]workflowRun, error) {
+	first, err := fetchWorkflowRunsPage(repo, state, "", 1, request)
+	if err != nil { return nil, err }
+	if state == "all" || first.TotalCount < githubActionsSearchCap {
+		return collectWorkflowRunPages(repo, state, "", first, request)
+	}
+	// GitHub caps each filtered search at 1,000 runs. Partition by
+	// creation second to avoid silently missing older failed jobs.
+	start := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := now.UTC().Add(24*time.Hour).Truncate(time.Second)
+	return fetchWorkflowRunWindow(repo, state, start, end, request, 0)
+}
+
+// Legacy all-states helper for default listing; filtered operations use
+// fetchWorkflowRunSnapshot with server-side status and complete partitions.
+func fetchAllWorkflowRuns(repo string, request func(string) ([]byte, error)) ([]workflowRun, error) {
+	return fetchWorkflowRunSnapshot(repo, "all", request, time.Now())
 }
 
 func newGitHubActionsAPI() actionsAPI {
 	return actionsAPI{
-		list: func(repo string) ([]workflowRun, error) {
-			return fetchAllWorkflowRuns(repo, func(endpoint string) ([]byte, error) {
+		list: func(repo, state string) ([]workflowRun, error) {
+			return fetchWorkflowRunSnapshot(repo, state, func(endpoint string) ([]byte, error) {
 				return githubActionsRequest("GET", endpoint)
-			})
+			}, time.Now())
 		},
 		get: func(repo string, id int64) (workflowRun, error) {
 			data, err := githubActionsRequest("GET", fmt.Sprintf("repos/%s/actions/runs/%d", repo, id))
@@ -267,7 +357,7 @@ func actionsCommand(args []string, api actionsAPI, output io.Writer) error {
 	}
 	// Complete retrieval before any modification. IDs are snapshotted once,
 	// so deletion cannot shift subsequent pagination offsets.
-	all, err := api.list(o.repo)
+	all, err := api.list(o.repo, o.state)
 	if err != nil {
 		return err
 	}
