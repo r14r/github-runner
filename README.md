@@ -153,8 +153,19 @@ ghr actions delete help
 only removes completed runs by default; active runs are skipped. Use
 `--with-cancel` to cancel matching active runs, wait for GitHub to report
 completion, then delete them. Run deletion is **irreversible**.
-The CLI retrieves all run pages before changing any run and rechecks each
-run immediately before performing a destructive API request. Invalid
+Bulk selection is performed **server-side** with GitHub's REST `status=STATE`
+filter. If more than 1,000 matching runs exist (GitHub's search cap),
+the CLI divides the search into creation-time windows, retrieves and
+deduplicates every matching run, and only then begins deletions.
+Each run is rechecked before a destructive API request.
+
+GitHub GraphQL exposes read-only `WorkflowRun` objects but **does not
+offer a `deleteWorkflowRun` or batch cancellation mutation**.
+Deleting workflow runs therefore still requires the documented REST
+`DELETE /repos/OWNER/REPO/actions/runs/RUN_ID` endpoint per run.
+The CLI provides the requested bulk semantics even though GitHub itself
+does not offer a single bulk-deletion mutation. If GitHub cannot fully
+enumerate results, it fails before deleting any run. Invalid
 permissions, API errors and cancellation timeouts return a nonzero exit status.
 
 For the detailed state and conclusion descriptions, run
