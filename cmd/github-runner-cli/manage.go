@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -132,6 +133,19 @@ func localBySlug(slug string) (localRunner, error) {
 
 // Identity comes from the persisted GitHub runner configuration; we never
 // infer OWNER/REPO from a hyphenated slug or delete a remote runner by label.
+// GitHub's .runner identity is JSON, but some existing registration volumes
+// contain a leading UTF-8 BOM. Accept that encoding marker without modifying
+// the persisted runner registration or weakening identity validation.
+func decodeRunnerIdentityJSON(data []byte) (runnerIdentity, error) {
+	data = bytes.TrimSpace(data)
+	data = bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	var id runnerIdentity
+	if err := json.Unmarshal(bytes.TrimSpace(data), &id); err != nil {
+		return runnerIdentity{}, err
+	}
+	return id, nil
+}
+
 func readRunnerIdentity(l localRunner) (runnerIdentity, error) {
 	if !existingVolume(l.Volume) {
 		return runnerIdentity{}, nil
@@ -167,8 +181,8 @@ func readRunnerIdentity(l localRunner) (runnerIdentity, error) {
 		if err != nil {
 			return runnerIdentity{}, fmt.Errorf("unable to inspect registration volume %s: %w", l.Volume, err)
 		}
-		var id runnerIdentity
-		if err := json.Unmarshal(body, &id); err != nil {
+		id, err := decodeRunnerIdentityJSON(body)
+		if err != nil {
 			return id, fmt.Errorf("invalid runner identity in %s: %w", l.Volume, err)
 		}
 		if id.GitHubURL != "" {
