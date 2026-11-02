@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -281,4 +282,59 @@ func TestActionsHelpWorksWithoutAssetsAndShowsAllPossibleStates(t *testing.T) {
 			if !strings.Contains(out,expected){t.Errorf("help %v missing %q",args,expected)}
 		}
 	}
+}
+
+func TestFetchAllWorkflowRunsPaginatesBeforeMutation(t *testing.T) {
+	var endpoints []string
+	makePage := func(ids []workflowRun, count int) []byte {
+		payload, err := json.Marshal(struct {
+			TotalCount int           `json:"total_count"`
+			WorkflowRuns []workflowRun `json:"workflow_runs"`
+		}{TotalCount:count, WorkflowRuns:ids})
+		if err != nil { t.Fatal(err) }
+		return payload
+	}
+	page1:=make([]workflowRun,100)
+	for i:=range page1 {page1[i]=runFixture(int64(i+1),"completed","failure")}
+	page2:=[]workflowRun{runFixture(101,"completed","success")}
+	runs,err:=fetchAllWorkflowRuns("example-org/demo",func(endpoint string)([]byte,error){
+		endpoints=append(endpoints,endpoint)
+		if strings.Contains(endpoint,"page=1"){return makePage(page1,101),nil}
+		if strings.Contains(endpoint,"page=2"){return makePage(page2,101),nil}
+		return nil,fmt.Errorf("unexpected page %q",endpoint)
+	})
+	if err!=nil{t.Fatal(err)}
+	if len(runs)!=101||len(endpoints)!=2||runs[100].ID!=101{t.Fatalf("pagination runs=%d endpoints=%v",len(runs),endpoints)}
+}
+
+func TestFetchAllWorkflowRunsRejectsIncompleteOrDuplicatedPages(t *testing.T) {
+	tests:=[]struct{
+		name string
+		body []byte
+		errorMessage string
+	}{
+		{"incomplete",[]byte(`{"total_count":7,"workflow_runs":[{"id":1,"status":"completed"}]}`),"partial result"},
+		{"badJSON",[]byte(`{ broken`),"invalid"},
+		{"duplicate",[]byte(`{"total_count":2,"workflow_runs":[{"id":1},{"id":1}]}`),"duplicate"},
+		{"invalidID",[]byte(`{"total_count":1,"workflow_runs":[{"id":0}]}`),"invalid run"},
+	}
+	for _,tc:=range tests{
+		t.Run(tc.name,func(t *testing.T){
+			_,err:=fetchAllWorkflowRuns("example-org/demo",func(string)([]byte,error){return tc.body,nil})
+			if err==nil||!strings.Contains(err.Error(),tc.errorMessage){t.Fatalf("%s expected failure: %v",tc.name,err)}
+		})
+	}
+}
+
+func TestCancelStatusChangedBeforeExecutionIsSkipped(t *testing.T) {
+	run:=runFixture(1,"in_progress","")
+	events:=[]string{}
+	api:=fixtureActionsAPI([]workflowRun{run},&events)
+	api.get=func(string,int64)(workflowRun,error){
+		events=append(events,"get")
+		return runFixture(1,"queued",""),nil
+	}
+	err:=actionsCommand([]string{"cancel","--repo","example-org/demo","--state","in_progress","--yes"},api,&bytes.Buffer{})
+	if err!=nil{t.Fatal(err)}
+	if !reflect.DeepEqual(events,[]string{"list example-org/demo","get"}){t.Fatalf("cancelled a changed state: %v",events)}
 }
