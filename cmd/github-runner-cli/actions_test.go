@@ -332,10 +332,10 @@ func TestFetchAllWorkflowRunsPaginatesBeforeMutation(t *testing.T) {
 	page2 := []workflowRun{runFixture(101, "completed", "success")}
 	runs, err := fetchAllWorkflowRuns("example-org/demo", func(endpoint string) ([]byte, error) {
 		endpoints = append(endpoints, endpoint)
-		if strings.Contains(endpoint, "page=1") {
+		if strings.HasSuffix(endpoint, "&page=1") {
 			return makePage(page1, 101), nil
 		}
-		if strings.Contains(endpoint, "page=2") {
+		if strings.HasSuffix(endpoint, "&page=2") {
 			return makePage(page2, 101), nil
 		}
 		return nil, fmt.Errorf("unexpected page %q", endpoint)
