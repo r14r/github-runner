@@ -62,6 +62,17 @@ registrations, containers, workflows or GitHub variables.
 `ghr build --repo OWNER/REPO` continues to use the previous **image-only**
 toolchain verification; a registered/running runner is not required for builds.
 
+## Guided setup and runner inventory
+
+```sh
+ghr wizard                         # interactive setup; prompts for a repository
+ghr assistant --repo OWNER/REPO    # alias for wizard
+ghr list                           # all locally installed runners and their container states
+ghr list --repo OWNER/REPO         # one local runner plus GitHub registrations
+```
+
+The wizard checks Docker, image, persistent volume, registration, service container and running state. Completed steps are skipped. Each modification requires confirmation, and workflow routing is optional and creates a reviewable pull request. Re-running the wizard does not delete an existing registration or volume.
+
 ## Register and operate
 
 ```sh
