@@ -113,9 +113,7 @@ ghr monitor --repo OWNER/REPO
 RUNNER_MONITOR_TAIL=0 ghr monitor --repo OWNER/REPO
 ```
 
-Monitor executes `docker logs --follow --tail N` for the selected
-runner container. It never prints the GitHub Actions run table or runner
-status and never reprints older log lines. `Ctrl+C` stops only the
+Monitor follows Docker logs while also polling the GitHub Actions Jobs API every 3 seconds for individual step transitions. Unchanged steps are not repeated. Completed runs from before attachment are ignored; very short intermediate step states can be missed because the GitHub API is polled. `Ctrl+C` stops only the
 monitor process, not the runner. Use `ghr status` or `gh run list`
 separately when needed.
 
