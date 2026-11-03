@@ -53,18 +53,19 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "[1] %-24s Repository: %s\n", "Configuration", r.Repo)
-	fmt.Fprintf(out, "    %-24s Container: %s\n", "Configuration", r.Container)
+	fmt.Fprintf(out, "[1] %-28s Repository: %s\n", "Configuration", r.Repo)
+	fmt.Fprintf(out, "    %-28s Container: %s\n", "Configuration", r.Container)
 	if err = r.selectPlatform(); err != nil {
 		return err
 	}
 	step := func(number int, label, status string) { fmt.Fprintf(out, "[%d] %-30s %s\n", number, label, status) }
-	step(2, "Check image and volume", "")
+	
 	imageExists := r.exists("image", r.Image)
 	volumeExists := r.exists("volume", r.Volume)
 	if imageExists && volumeExists {
-		fmt.Fprintln(out, "    Already prepared: SKIP")
+		step(2, "Check image and volume", "Already prepared: SKIP")
 	} else {
+		step(2, "Check image and volume", "Image/volume missing")
 		ok, e := confirm("Build image and prepare registration volume?")
 		if e != nil {
 			return e
@@ -76,10 +77,11 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 			return err
 		}
 	}
-	step(3, "Registration", "")
+	
 	if r.stateConfigured() {
-		fmt.Fprintln(out, "    Existing registration: SKIP")
+		step(3, "Registration", "Existing registration: SKIP")
 	} else {
+		step(3, "Registration", "Not configured")
 		visibility, e := commandOutput("", "gh", "repo", "view", r.Repo, "--json", "visibility", "--jq", ".visibility")
 		if e != nil {
 			return e
@@ -105,10 +107,11 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 			return err
 		}
 	}
-	step(4, "Container", "")
+	
 	if r.exists("container", r.Container) {
-		fmt.Fprintln(out, "    Container exists: SKIP")
+		step(4, "Container", "Container exists: SKIP")
 	} else {
+		step(4, "Container", "Not installed")
 		ok, e := confirm("Create runner service container?")
 		if e != nil {
 			return e
@@ -120,14 +123,15 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 			return err
 		}
 	}
-	step(5, "Start", "")
+	
 	state, e := r.docker("container", "inspect", "--format", "{{.State.Status}}", r.Container)
 	if e != nil {
 		return e
 	}
 	if state == "running" {
-		fmt.Fprintln(out, "    Already running: SKIP")
+		step(5, "Start", "Already running: SKIP")
 	} else {
+		step(5, "Start", "Stopped")
 		ok, e := confirm("Start the runner?")
 		if e != nil {
 			return e
