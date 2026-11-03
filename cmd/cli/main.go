@@ -223,6 +223,12 @@ func main() {
 		os.Exit(1)
 	}
 	if e := run(os.Args[1:], exe, cwd); e != nil {
+		// Full doctor already renders each error in its aligned FAIL row.
+		// Do not print a second, unaligned multi-line error after the table.
+		var diagnosed *doctorFailure
+		if errors.As(e, &diagnosed) {
+			os.Exit(1)
+		}
 		fmt.Fprintln(os.Stderr, "ERROR:", e)
 		var exit *exec.ExitError
 		if errors.As(e, &exit) {

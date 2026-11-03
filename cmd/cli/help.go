@@ -56,12 +56,12 @@ var commandDocs = map[string]commandDoc{
 	},
 	"doctor": {
 		Summary:     "Read-only end-to-end health check for the repository's self-hosted GitHub Actions runner.",
-		Description: "Checks the running local Docker container and image, required workflow tools, persisted runner registration, the exact GitHub runner's online/idle state and labels, every .github/workflows/*.yml/*.yaml job's RUNNER_LABELS_JSON selector, and the configured GitHub repository variable. Reports all six stages even when independent checks fail.",
+		Description: "Checks the running local Docker container and image, required workflow tools, persisted runner registration, the exact GitHub runner's online/idle state and labels, every .github/workflows/*.yml/*.yaml job's RUNNER_LABELS_JSON selector, and the configured GitHub repository variable. Reports six aligned rows (step number, colored OK/FAIL status, concise description), without banners or duplicate Toolchain Doctor output. Continues independent checks after failures.",
 		Usage:       []string{"ghr doctor --repo OWNER/REPO"},
 		Options:     []string{repositoryFlagHelp, "-h, --help             Show this page."},
 		Values:      []string{"RUNNER_BACKEND: docker (default via auto).", "RUNNER_PROFILE: auto, generic, toolchain, runner-base.", "RUNNER_IMAGE: optional explicit Docker image override.", "RUNNER_LABELS_JSON: repository variable containing JSON runner labels, e.g. [\"self-hosted\",\"Linux\",\"X64\",\"repo-example-org-demo-app\"]."},
 		Examples:    []string{"ghr doctor --repo example-org/demo-app", "ghr build --repo example-org/demo-app", "ghr status --repo example-org/demo-app", "gh variable set RUNNER_LABELS_JSON --repo example-org/demo-app --body '[\"self-hosted\",\"Linux\",\"X64\",\"repo-example-org-demo-app\"]'"},
-		Notes:       []string{"Doctor does not start/stop runners, modify workflow files or set GitHub variables.", "All local executable jobs must use runs-on: ${{ fromJSON(vars.RUNNER_LABELS_JSON || '\"ubuntu-24.04\"') }}.", "Workflow files with .yml and .yaml extensions are checked; reusable-workflow call jobs without runs-on are exempt.", "A runner currently executing a job is reported as BUSY/not idle and fails the strict idle check.", "ghr build still performs the image-only doctor and does not require a registered or running runner."},
+		Notes:       []string{"Doctor output uses green/red background status badges on color-capable terminals; NO_COLOR=1 disables colors. No opening banners or unaligned nested headings. Doctor does not start/stop runners, modify workflow files or set GitHub variables.", "All local executable jobs must use runs-on: ${{ fromJSON(vars.RUNNER_LABELS_JSON || '\"ubuntu-24.04\"') }}.", "Workflow files with .yml and .yaml extensions are checked; reusable-workflow call jobs without runs-on are exempt.", "A runner currently executing a job is reported as BUSY/not idle and fails the strict idle check.", "ghr build still performs the image-only doctor and does not require a registered or running runner."},
 	},
 	"install": {
 		Summary:     "Build the runner image, register a repository runner and create its Docker container.",
@@ -126,7 +126,7 @@ var commandDocs = map[string]commandDoc{
 		Summary:     "List managed local Docker runners; optionally include a repository's GitHub registrations.",
 		Description: "Without a repository, discovers local runner containers and registration volumes in the current Docker context. With --repo, filters local installations and queries the selected repository's runner registrations, including other hosts.",
 		Usage:       []string{"ghr list-installed [--repo OWNER/REPO]", "ghr list-installed --all"},
-		Options:     []string{"--repo, --repository OWNER/REPO  Optional repository filter; with GitHub API registration details. Defaults to RUNNER_REPO when set.", "--all                   Explicit alias for listing all LOCAL installations (default without --repo).", "-h, --help             Show this page."},
+		Options:     []string{"--repo, --repository OWNER/REPO  Optional repository filter; with GitHub API registration details.", "--all                   Explicit alias for listing all LOCAL installations (default without --repo).", "-h, --help             Show this page."},
 		Examples:    []string{"ghr list-installed", "ghr list-installed --all", "ghr list-installed --repo example-org/demo-app", "ghr list-installed --repository example-org/another-app"},
 		Notes:       []string{"Without --repo this does NOT enumerate all runners registered in every GitHub repository.", "Read-only; the --repo form requires GitHub CLI API access."},
 	},
@@ -257,8 +257,8 @@ var commandDocs = map[string]commandDoc{
 func init() {
 	for alias, canonical := range map[string]string{
 		"runner configure": "runner register",
-		"assistant":        "wizard",
-		"list":             "list-installed",
+		"assistant": "wizard",
+		"list": "list-installed",
 		"runner pr":        "runner setup",
 		"runner start":     "start",
 		"runner stop":      "stop",
@@ -382,7 +382,9 @@ RUNNER COMMANDS:
   status              Inspect container status and GitHub online/busy state
   monitor             Follow live runner container logs (Ctrl+C to quit)
   refresh             Replace a stopped container, preserving its volume
-  wizard              Guided setup; alias: assistant\n  list                 List installed runners and their running state\n  list-installed      List local runners; --repo also lists GitHub registrations
+  wizard              Guided setup; alias: assistant
+  list                 List installed runners and their running state
+  list-installed      List local runners; --repo also lists GitHub registrations
   uninstall           Safely unregister/remove one or all local runners
   self-uninstall      Remove only the installed CLI and runtime assets
   runner              Advanced Docker commands and workflow setup\n  actions             List, cancel and delete GitHub Actions workflow runs
@@ -399,7 +401,8 @@ COMMON OPTIONS:
   -h, --help                Show help at any command level
 
 GLOBAL ENVIRONMENT:
-  RUNNER_REPO               Default OWNER/REPO when --repo is omitted\n  RUNNER_BACKEND            auto (default), docker
+  RUNNER_REPO               Default OWNER/REPO when --repo is omitted
+  RUNNER_BACKEND            auto (default), docker
   RUNNER_PROFILE            auto (default), generic, toolchain, runner-base
   RUNNER_IMAGE              Optional explicit Docker image tag
   RUNNER_DOCKER_SOCKET      0 (default), 1 (privileged opt-in)

@@ -5,7 +5,7 @@ repository-scoped, Docker/Colima-backed GitHub Actions runners without
 application-specific profiles, hardcoded repository names or workflow
 dependencies on the manager repository.
 
-Current version: **0.5.4**.
+Current version: **0.5.5**.
 
 ## Install
 
@@ -55,8 +55,16 @@ action or a custom image rather than running arbitrary shell commands.
 `fromJSON(vars.RUNNER_LABELS_JSON ...)`,
 (6) the repository variable exists and contains JSON labels
 `["self-hosted","Linux","X64","repo-OWNER-REPO"]`.
-It prints PASS/FAIL for each step, continues through independent failures
-and returns nonzero if any check fails. Doctor is read-only and never modifies
+It prints **exactly six aligned three-column rows**, followed by a result
+row: two-digit step number, fixed-width `OK`/`FAIL` badge with green/red
+background on color-capable terminals, and a concise description. There
+are no introductory banners, duplicate Toolchain Doctor output or
+repeated multi-line errors. Redirected output and `NO_COLOR=1` use plain
+text, retaining alignment. The doctor continues through independent failures
+and exits nonzero on any failed check.
+
+Runner identity files with an optional leading UTF-8 BOM are read safely
+without modifying the registration volume. Doctor is read-only and never modifies
 registrations, containers, workflows or GitHub variables.
 
 `ghr build --repo OWNER/REPO` continues to use the previous **image-only**
@@ -113,7 +121,9 @@ ghr monitor --repo OWNER/REPO
 RUNNER_MONITOR_TAIL=0 ghr monitor --repo OWNER/REPO
 ```
 
-Monitor follows Docker logs while also polling the GitHub Actions Jobs API every 3 seconds for individual step transitions. Unchanged steps are not repeated. Completed runs from before attachment are ignored; very short intermediate step states can be missed because the GitHub API is polled. `Ctrl+C` stops only the
+Monitor executes `docker logs --follow --tail N` for the selected
+runner container. It never prints the GitHub Actions run table or runner
+status and never reprints older log lines. `Ctrl+C` stops only the
 monitor process, not the runner. Use `ghr status` or `gh run list`
 separately when needed.
 
@@ -229,11 +239,6 @@ application-owned runner diagnostics.
 
 ## Development
 
-The Go CLI source and tests live in `cmd/cli/` (previously `cmd/github-runner-cli/`). The installed executable remains named `github-runner-cli` and its `ghr` alias is unchanged.
-
-The workflow requirements analyzer recognizes `extractions/setup-just@v2` and other versions as workflow-provided `just`; when supplied, `with.just-version` is recorded in the manifest. The Action's major version is not interpreted as the installed Just version.
-
-
 ```sh
 just update           # git pull --ff-only, bootstrap, CI, build
 just fmt              # explicit formatting change
@@ -249,3 +254,6 @@ image test on Ubuntu 24.04.
 **Legacy native host installers are retired in v0.5.0.** The repository now
 supports repository-agnostic Docker runners only; it does not automatically
 stop or migrate any previously installed host launchd/systemd service.
+
+
+The Go CLI source and tests live in `cmd/cli/`; `extractions/setup-just` is recognized as a workflow-managed tool.
