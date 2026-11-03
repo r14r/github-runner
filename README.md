@@ -62,6 +62,22 @@ registrations, containers, workflows or GitHub variables.
 `ghr build --repo OWNER/REPO` continues to use the previous **image-only**
 toolchain verification; a registered/running runner is not required for builds.
 
+## Default repository through RUNNER_REPO
+
+Set `RUNNER_REPO` to avoid repeating `--repo` for repository-scoped commands:
+
+```sh
+export RUNNER_REPO=r14r/BookBuilder
+ghr wizard
+ghr status
+ghr doctor
+ghr list
+# An explicit --repo always wins:
+ghr status --repo r14r/github-runner-test
+```
+
+The environment variable is validated as an `OWNER/REPO` value. When both are absent, repository-required commands fail; the wizard prompts for a repository.
+
 ## Guided setup and runner inventory
 
 ```sh
