@@ -115,6 +115,13 @@ var commandDocs = map[string]commandDoc{
 		Examples:    []string{"ghr build --repo example-org/demo-app", "ghr doctor --repo example-org/demo-app", "ghr refresh --repo example-org/demo-app", "ghr status --repo example-org/demo-app"},
 		Notes:       []string{"Refuses refresh when the running runner is busy, GitHub status is unavailable, or its registration cannot be verified.", "A running idle runner is automatically stopped and restarted; a stopped runner remains stopped.", "Existing registration volume is retained and the runner is never unregistered.", "If replacement fails, report the error and preserve the registration volume."},
 	},
+	"wizard": {
+		Summary:     "Interactive, resumable runner setup.",
+		Description: "Checks Docker, existing image, registration, service and running state. Skips completed stages, asks before changes and optionally creates a workflow-routing PR.",
+		Usage:       []string{"ghr wizard [--repo OWNER/REPO]", "ghr assistant [--repo OWNER/REPO]"},
+		Options:     []string{"--repo OWNER/REPO  Optional repository; prompted when omitted.", "-h, --help  Show this page."},
+		Examples:    []string{"ghr wizard", "ghr assistant --repo r14r/BookBuilder"},
+	},
 	"list-installed": {
 		Summary:     "List managed local Docker runners; optionally include a repository's GitHub registrations.",
 		Description: "Without a repository, discovers local runner containers and registration volumes in the current Docker context. With --repo, filters local installations and queries the selected repository's runner registrations, including other hosts.",
@@ -250,6 +257,8 @@ var commandDocs = map[string]commandDoc{
 func init() {
 	for alias, canonical := range map[string]string{
 		"runner configure": "runner register",
+		"assistant":        "wizard",
+		"list":             "list-installed",
 		"runner pr":        "runner setup",
 		"runner start":     "start",
 		"runner stop":      "stop",
@@ -373,6 +382,8 @@ RUNNER COMMANDS:
   status              Inspect container status and GitHub online/busy state
   monitor             Follow live runner container logs (Ctrl+C to quit)
   refresh             Replace a stopped container, preserving its volume
+  wizard              Guided setup; alias: assistant
+  list                 List installed runners and their running state
   list-installed      List local runners; --repo also lists GitHub registrations
   uninstall           Safely unregister/remove one or all local runners
   self-uninstall      Remove only the installed CLI and runtime assets
@@ -390,6 +401,7 @@ COMMON OPTIONS:
   -h, --help                Show help at any command level
 
 GLOBAL ENVIRONMENT:
+  RUNNER_REPO               Default OWNER/REPO when --repo is omitted
   RUNNER_BACKEND            auto (default), docker
   RUNNER_PROFILE            auto (default), generic, toolchain, runner-base
   RUNNER_IMAGE              Optional explicit Docker image tag

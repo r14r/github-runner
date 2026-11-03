@@ -108,7 +108,7 @@ func run(args []string, executable, cwd string) error {
 			return fullDoctor(r)
 		}
 		return buildCommand(r)
-	case "list-installed":
+	case "list", "list-installed":
 		repo, rest, err := repoOption(args[1:])
 		if err != nil {
 			return err
@@ -120,6 +120,9 @@ func run(args []string, executable, cwd string) error {
 			return err
 		}
 		return listInstalled(repo)
+
+	case "wizard", "assistant":
+		return runWizard(args[1:], env)
 
 	case "uninstall":
 		repo, rest, err := repoOption(args[1:])

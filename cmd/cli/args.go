@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 )
 
 // repoOption accepts --repo and --repository in any position, including
 // --repo=OWNER/REPO, and leaves only action-specific flags for the caller.
-// A repository must be explicit for repository-scoped operations.
+// An explicit flag takes precedence over the optional RUNNER_REPO fallback.
 func repoOption(args []string) (string, []string, error) {
 	var repo string
 	rest := make([]string, 0, len(args))
@@ -39,6 +40,15 @@ func repoOption(args []string) (string, []string, error) {
 		}
 		repo = value
 	}
+	if repo == "" {
+		if fallback := strings.TrimSpace(os.Getenv("RUNNER_REPO")); fallback != "" {
+			fallback = gitHubRepository(fallback)
+			if _, err := repoSlug(fallback); err != nil {
+				return "", nil, fmt.Errorf("invalid RUNNER_REPO: %w", err)
+			}
+			repo = fallback
+		}
+	}
 	return repo, rest, nil
 }
 
@@ -48,7 +58,7 @@ func requireRepo(args []string) (string, []string, error) {
 		return "", nil, err
 	}
 	if repo == "" {
-		return "", nil, errors.New("missing --repo OWNER/REPO (alias: --repository)")
+		return "", nil, errors.New("missing repository: use --repo OWNER/REPO or set RUNNER_REPO")
 	}
 	return repo, rest, nil
 }
