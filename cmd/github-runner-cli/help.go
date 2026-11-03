@@ -126,7 +126,7 @@ var commandDocs = map[string]commandDoc{
 		Summary:     "List managed local Docker runners; optionally include a repository's GitHub registrations.",
 		Description: "Without a repository, discovers local runner containers and registration volumes in the current Docker context. With --repo, filters local installations and queries the selected repository's runner registrations, including other hosts.",
 		Usage:       []string{"ghr list-installed [--repo OWNER/REPO]", "ghr list-installed --all"},
-		Options:     []string{"--repo, --repository OWNER/REPO  Optional repository filter; with GitHub API registration details.", "--all                   Explicit alias for listing all LOCAL installations (default without --repo).", "-h, --help             Show this page."},
+		Options:     []string{"--repo, --repository OWNER/REPO  Optional repository filter; with GitHub API registration details. Defaults to RUNNER_REPO when set.", "--all                   Explicit alias for listing all LOCAL installations (default without --repo).", "-h, --help             Show this page."},
 		Examples:    []string{"ghr list-installed", "ghr list-installed --all", "ghr list-installed --repo example-org/demo-app", "ghr list-installed --repository example-org/another-app"},
 		Notes:       []string{"Without --repo this does NOT enumerate all runners registered in every GitHub repository.", "Read-only; the --repo form requires GitHub CLI API access."},
 	},
@@ -399,7 +399,7 @@ COMMON OPTIONS:
   -h, --help                Show help at any command level
 
 GLOBAL ENVIRONMENT:
-  RUNNER_BACKEND            auto (default), docker
+  RUNNER_REPO               Default OWNER/REPO when --repo is omitted\n  RUNNER_BACKEND            auto (default), docker
   RUNNER_PROFILE            auto (default), generic, toolchain, runner-base
   RUNNER_IMAGE              Optional explicit Docker image tag
   RUNNER_DOCKER_SOCKET      0 (default), 1 (privileged opt-in)
