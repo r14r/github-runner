@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   go:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, repo-r14r-github-runner]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -65,7 +65,7 @@ jobs:
           grep -Fq 'actions/setup-go@v5' "$RUNNER_TEMP/toolchain.yaml"
 
   generic-image:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64, repo-r14r-github-runner]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
