@@ -36,7 +36,7 @@ ci: bootstrap fmt-check lint test
 
 build: ci
     mkdir -p dist
-    go build -trimpath -ldflags "-X main.version=$(cat VERSION)" -o dist/github-runner-cli ./cmd/github-runner-cli
+    go build -trimpath -ldflags "-X main.version=$(cat VERSION)" -o dist/github-runner-cli ./cmd/cli
     ./dist/github-runner-cli version
 
 # Install the Go binary and generic Docker runtime assets. Does not touch
@@ -54,37 +54,37 @@ install: build
       test "$("$destination/github-runner-cli" version)" = "github-runner-cli $(cat VERSION)"
 
 run *args:
-    go run ./cmd/github-runner-cli {{args}}
+    go run ./cmd/cli {{args}}
 
 runner-download repository:
-    go run ./cmd/github-runner-cli runner download --repo "{{repository}}"
+    go run ./cmd/cli runner download --repo "{{repository}}"
 
 runner-register repository:
-    go run ./cmd/github-runner-cli runner register --repo "{{repository}}"
+    go run ./cmd/cli runner register --repo "{{repository}}"
 
 runner-install-service repository:
-    go run ./cmd/github-runner-cli runner install-service --repo "{{repository}}"
+    go run ./cmd/cli runner install-service --repo "{{repository}}"
 
 runner-start repository:
-    go run ./cmd/github-runner-cli start --repo "{{repository}}"
+    go run ./cmd/cli start --repo "{{repository}}"
 
 runner-stop repository:
-    go run ./cmd/github-runner-cli stop --repo "{{repository}}"
+    go run ./cmd/cli stop --repo "{{repository}}"
 
 runner-status repository:
-    go run ./cmd/github-runner-cli status --repo "{{repository}}"
+    go run ./cmd/cli status --repo "{{repository}}"
 
 runner-monitor repository:
-    go run ./cmd/github-runner-cli monitor --repo "{{repository}}"
+    go run ./cmd/cli monitor --repo "{{repository}}"
 
 runner-docker-doctor:
-    go run ./cmd/github-runner-cli runner docker-doctor
+    go run ./cmd/cli runner docker-doctor
 
 runner-pr repository job workflow=".github/workflows/ci.yml":
-    go run ./cmd/github-runner-cli runner setup --repo "{{repository}}" --workflow "{{workflow}}" --job "{{job}}"
+    go run ./cmd/cli runner setup --repo "{{repository}}" --workflow "{{workflow}}" --job "{{job}}"
 
 list-installed *args:
-    go run ./cmd/github-runner-cli list-installed {{args}}
+    go run ./cmd/cli list-installed {{args}}
 
 # Uninstall is intentionally not a just recipe: use the CLI with explicit flags.
 doctor:
