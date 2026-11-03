@@ -35,7 +35,7 @@ var stepWith = regexp.MustCompile(`^\s+with:\s*$`)
 var fieldKey = regexp.MustCompile(`^\s+([A-Za-z][A-Za-z0-9_-]+):\s*(.*?)\s*$`)
 var usesTool = map[string]string{
 	"actions/setup-python":        "python",
-	"extractions/setup-just":     "just",
+	"extractions/setup-just":      "just",
 	"actions/setup-java":          "java",
 	"actions/setup-node":          "node",
 	"actions/setup-go":            "go",

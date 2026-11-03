@@ -257,8 +257,8 @@ var commandDocs = map[string]commandDoc{
 func init() {
 	for alias, canonical := range map[string]string{
 		"runner configure": "runner register",
-		"assistant": "wizard",
-		"list": "list-installed",
+		"assistant":        "wizard",
+		"list":             "list-installed",
 		"runner pr":        "runner setup",
 		"runner start":     "start",
 		"runner stop":      "stop",
