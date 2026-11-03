@@ -107,7 +107,7 @@ func setupWorkflow(args []string) error {
 		return e
 	}
 	slug, _ := repoSlug(o.repo)
-	if e := commandRun("", "gh", "auth", "status"); e != nil {
+	if _, e := commandOutput("", "gh", "auth", "token"); e != nil {
 		return fmt.Errorf("authenticate with gh auth login: %w", e)
 	}
 	visibility, e := commandOutput("", "gh", "repo", "view", o.repo, "--json", "visibility", "--jq", ".visibility")
