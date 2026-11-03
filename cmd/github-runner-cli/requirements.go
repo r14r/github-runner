@@ -35,6 +35,7 @@ var stepWith = regexp.MustCompile(`^\s+with:\s*$`)
 var fieldKey = regexp.MustCompile(`^\s+([A-Za-z][A-Za-z0-9_-]+):\s*(.*?)\s*$`)
 var usesTool = map[string]string{
 	"actions/setup-python":        "python",
+	"extractions/setup-just":     "just",
 	"actions/setup-java":          "java",
 	"actions/setup-node":          "node",
 	"actions/setup-go":            "go",
@@ -46,7 +47,7 @@ var versionField = map[string]string{
 	"python": "python-version", "java": "java-version",
 	"node": "node-version", "go": "go-version",
 	"ruby": "ruby-version", "typst": "typst-version",
-	"php": "php-version",
+	"php": "php-version", "just": "just-version",
 }
 var runToolPatterns = map[string]*regexp.Regexp{
 	"python":     regexp.MustCompile(`\b(python|python3|pytest|ruff|pip)\b`),
@@ -456,6 +457,7 @@ func toolManagedByWorkflow(t toolRequirement) bool {
 	// Recognized setup actions provision language runtimes at workflow step
 	// execution time, not as part of the persistent Docker image.
 	return strings.Contains(t.Source, "setup-python@") ||
+		strings.Contains(t.Source, "extractions/setup-just@") ||
 		strings.Contains(t.Source, "setup-java@") ||
 		strings.Contains(t.Source, "setup-node@") ||
 		strings.Contains(t.Source, "setup-go@") ||
