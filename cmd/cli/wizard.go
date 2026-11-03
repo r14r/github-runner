@@ -58,8 +58,9 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 	if err = r.selectPlatform(); err != nil {
 		return err
 	}
-	step := func(number int, label, status string) { fmt.Fprintf(out, "[%d] %-30s %s\n", number, label, status) }
-	
+	step := func(number int, label, status string) {
+		fmt.Fprintf(out, "[%d] %-30s %s\n", number, label, status)
+	}
 	imageExists := r.exists("image", r.Image)
 	volumeExists := r.exists("volume", r.Volume)
 	if imageExists && volumeExists {
@@ -77,7 +78,6 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 			return err
 		}
 	}
-	
 	if r.stateConfigured() {
 		step(3, "Registration", "Existing registration: SKIP")
 	} else {
@@ -107,7 +107,6 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 			return err
 		}
 	}
-	
 	if r.exists("container", r.Container) {
 		step(4, "Container", "Container exists: SKIP")
 	} else {
@@ -123,7 +122,6 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 			return err
 		}
 	}
-	
 	state, e := r.docker("container", "inspect", "--format", "{{.State.Status}}", r.Container)
 	if e != nil {
 		return e
