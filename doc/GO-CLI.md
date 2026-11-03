@@ -1,4 +1,4 @@
-# Go CLI v0.5.4 — repository-neutral runner manager
+# Go CLI v0.5.5 — repository-neutral runner manager
 
 ## Typical workflow
 
@@ -20,13 +20,30 @@ examples and safety notes before attempting authentication or Docker access.
 ghr doctor --repo OWNER/REPO
 ```
 
-This command now performs six checks in sequence, collecting independent failures:
+The command prints only six compact lines and a final result in three
+columns (two-digit step number, color-coded status, description). On
+interactive terminals, `OK` has a green background and `FAIL` a red
+background. Non-TTY output and `NO_COLOR=1` use fixed-width plain text.
+The Toolchain Doctor's separate headings and footer are suppressed here;
+`ghr build` retains its original detailed toolchain diagnostics.
+
+```text
+01    OK    Docker: github-runner-r14r-bookbuilder (running; image matches)
+02    OK    Toolchain: 0 tools verified in image, 4 provided by workflow actions; 6 workflows
+03    OK    Registration: example-agent (ID 42; volume github-runner-r14r-bookbuilder-state)
+04    OK    GitHub: example-agent (online; busy=false)
+05    OK    Workflows: 6 files, 7/7 jobs use RUNNER_LABELS_JSON
+06    OK    RUNNER_LABELS_JSON: ["self-hosted","Linux","X64","repo-r14r-bookbuilder"]
+--    OK    RESULT: PASS — all 6 checks OK (r14r/BookBuilder)
+```
+
+The command performs six checks, collecting independent failures:
 
 1. Local Docker/Colima container exists, is running and uses the selected image.
 2. Workflow requirements and toolchain available in that image (recognized setup
    actions are reported as workflow-managed).
 3. Persistent local registration volume contains a valid runner ID, name and
-   repository identity.
+   repository identity. A leading UTF-8 BOM in the JSON is tolerated.
 4. The exact GitHub runner is registered, `online`, **idle** (`busy=false`)
    and has labels `self-hosted`, `Linux`, `X64`, `repo-OWNER-REPO`.
 5. Every executable job in every `.github/workflows/*.yml` and `*.yaml`

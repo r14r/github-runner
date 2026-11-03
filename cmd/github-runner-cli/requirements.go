@@ -493,31 +493,37 @@ func validateProfile(m toolchainManifest) error {
 // doctor is a read-only image check; actions that provision their own
 // runtimes are listed as workflow-managed, not misreported as host tools.
 func toolchainDoctor(r dockerRunner) error {
-	fmt.Fprintln(os.Stdout, "GitHub Runner — Toolchain Doctor")
-	m, err := discoverRequirementsWithProgress(r, os.Stdout)
+	return toolchainDoctorOutput(r, os.Stdout)
+}
+
+// toolchainDoctorOutput preserves the standalone build diagnostics while
+// allowing the full doctor to capture them without nested headings.
+func toolchainDoctorOutput(r dockerRunner, out io.Writer) error {
+	fmt.Fprintln(out, "GitHub Runner — Toolchain Doctor")
+	m, err := discoverRequirementsWithProgress(r, out)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stdout, "\n02: Check requirements")
-	fmt.Fprintf(os.Stdout, "    Workflows:  %d\n    Actions:    %d\n    Tools:      %d\n", len(m.Workflows), len(m.Actions), len(m.Tools))
+	fmt.Fprintln(out, "\n02: Check requirements")
+	fmt.Fprintf(out, "    Workflows:  %d\n    Actions:    %d\n    Tools:      %d\n", len(m.Workflows), len(m.Actions), len(m.Tools))
 	if err := validateProfile(m); err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stdout, "    Status:     OK")
-	fmt.Fprintln(os.Stdout, "\n03: Check runner image")
-	fmt.Fprintf(os.Stdout, "    Image:      %s\n", r.Image)
+	fmt.Fprintln(out, "    Status:     OK")
+	fmt.Fprintln(out, "\n03: Check runner image")
+	fmt.Fprintf(out, "    Image:      %s\n", r.Image)
 	if err := r.selectPlatform(); err != nil {
 		return err
 	}
 	if !r.exists("image", r.Image) {
 		return fmt.Errorf("image %s missing; run build --repo %s", r.Image, r.Repo)
 	}
-	fmt.Fprintln(os.Stdout, "    Status:     OK")
-	fmt.Fprintln(os.Stdout, "\n04: Check toolchain")
+	fmt.Fprintln(out, "    Status:     OK")
+	fmt.Fprintln(out, "\n04: Check toolchain")
 	checked, managed := 0, 0
 	for _, t := range m.Tools {
 		if toolManagedByWorkflow(t) {
-			fmt.Fprintln(os.Stdout, toolStatusLine(t.Name, t.Version, "WORKFLOW ACTION"))
+			fmt.Fprintln(out, toolStatusLine(t.Name, t.Version, "WORKFLOW ACTION"))
 			managed++
 			continue
 		}
@@ -562,18 +568,18 @@ func toolchainDoctor(r dockerRunner) error {
 		cmd := exec.Command("docker", "run", "--rm", "--platform", dockerPlatform, "--entrypoint", "bash", r.Image, "-euc", check)
 		output, checkErr := cmd.CombinedOutput()
 		if checkErr != nil {
-			fmt.Fprintln(os.Stdout, toolStatusLine(t.Name, t.Version, "FAIL"))
+			fmt.Fprintln(out, toolStatusLine(t.Name, t.Version, "FAIL"))
 			detail := strings.TrimSpace(string(output))
 			if detail != "" {
-				fmt.Fprintf(os.Stderr, "    Detail: %s\n", detail)
+				fmt.Fprintf(out, "    Detail: %s\n", detail)
 			}
 			return fmt.Errorf("tool %s %s failed image verification: %w", t.Name, t.Version, checkErr)
 		}
-		fmt.Fprintln(os.Stdout, toolStatusLine(t.Name, t.Version, "OK"))
+		fmt.Fprintln(out, toolStatusLine(t.Name, t.Version, "OK"))
 		checked++
 	}
-	fmt.Fprintf(os.Stdout, "\nRESULT: PASS — %d tools verified in image, %d provided by workflow actions\n", checked, managed)
-	fmt.Fprintf(os.Stdout, "Repository: %s\nImage:      %s\n", r.Repo, r.Image)
+	fmt.Fprintf(out, "\nRESULT: PASS — %d tools verified in image, %d provided by workflow actions\n", checked, managed)
+	fmt.Fprintf(out, "Repository: %s\nImage:      %s\n", r.Repo, r.Image)
 	return nil
 }
 
