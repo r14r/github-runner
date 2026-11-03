@@ -144,7 +144,23 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 		return e
 	}
 	if ok {
-		if err = setupWorkflow([]string{"--repo", r.Repo, "--no-merge"}); err != nil {
+		setupArgs := []string{"--repo", r.Repo, "--no-merge"}
+		visibility, e := commandOutput("", "gh", "repo", "view", r.Repo, "--json", "visibility", "--jq", ".visibility")
+		if e != nil {
+			return e
+		}
+		if strings.EqualFold(visibility, "PUBLIC") {
+			allowed, e := confirm("PUBLIC repository: allow routing workflows to this trusted self-hosted runner?")
+			if e != nil {
+				return e
+			}
+			if !allowed {
+				fmt.Fprintln(out, "  Workflow setup skipped; no workflow changes made.")
+				return nil
+			}
+			setupArgs = append(setupArgs, "--allow-public")
+		}
+		if err = setupWorkflow(setupArgs); err != nil {
 			return err
 		}
 	}
