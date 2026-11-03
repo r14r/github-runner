@@ -53,8 +53,8 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "[1] %-28s Repository: %s\n", "Configuration", r.Repo)
-	fmt.Fprintf(out, "    %-28s Container: %s\n", "Configuration", r.Container)
+	fmt.Fprintf(out, "[1] %-30s Repository: %s\n", "Configuration", r.Repo)
+	fmt.Fprintf(out, "    %-30s Container: %s\n", "Configuration", r.Container)
 	if err = r.selectPlatform(); err != nil {
 		return err
 	}
