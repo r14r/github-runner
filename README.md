@@ -229,6 +229,11 @@ application-owned runner diagnostics.
 
 ## Development
 
+The Go CLI source and tests live in `cmd/cli/` (previously `cmd/github-runner-cli/`). The installed executable remains named `github-runner-cli` and its `ghr` alias is unchanged.
+
+The workflow requirements analyzer recognizes `extractions/setup-just@v2` and other versions as workflow-provided `just`; when supplied, `with.just-version` is recorded in the manifest. The Action's major version is not interpreted as the installed Just version.
+
+
 ```sh
 just update           # git pull --ff-only, bootstrap, CI, build
 just fmt              # explicit formatting change
