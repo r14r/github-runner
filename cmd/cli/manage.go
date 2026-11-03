@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/tabwriter"
 )
 
 const runnerContainerPrefix = "github-runner-"
@@ -295,11 +296,12 @@ func listInstalled(repo string) error {
 		}
 	}
 	fmt.Println("LOCAL DOCKER RUNNERS (this Docker context)")
-	fmt.Println("REPOSITORY/SLUG\tCONTAINER\tSTATUS\tVOLUME\tRUNNER NAME")
+	localTable := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(localTable, "REPOSITORY/SLUG\tCONTAINER\tSTATUS\tVOLUME\tRUNNER NAME")
 	for _, slug := range slugs {
 		l, err := inspectLocal(slug)
 		if err != nil {
-			fmt.Printf("%s\t%s\t%s\t%s\t(identity unavailable: %v)\n", slug, runnerContainerPrefix+slug, "unknown", runnerContainerPrefix+slug+runnerVolumeSuffix, err)
+			fmt.Fprintf(localTable, "%s\t%s\t%s\t%s\t(identity unavailable: %v)\n", slug, runnerContainerPrefix+slug, "unknown", runnerContainerPrefix+slug+runnerVolumeSuffix, err)
 			continue
 		}
 		name := l.Repository
@@ -310,10 +312,13 @@ func listInstalled(repo string) error {
 		if existingVolume(l.Volume) {
 			volume = l.Volume
 		}
-		fmt.Printf("%s\t%s\t%s\t%s\t%s\n", name, l.Container, l.State, volume, l.Identity.AgentName)
+		fmt.Fprintf(localTable, "%s\t%s\t%s\t%s\t%s\n", name, l.Container, l.State, volume, l.Identity.AgentName)
 	}
 	if len(slugs) == 0 {
-		fmt.Println("(none)")
+		fmt.Fprintln(localTable, "(none)")
+	}
+	if err := localTable.Flush(); err != nil {
+		return err
 	}
 	if repo != "" {
 		remote, err := githubRunners(repo)
@@ -321,12 +326,16 @@ func listInstalled(repo string) error {
 			return err
 		}
 		fmt.Printf("\nGITHUB RUNNER REGISTRATIONS (%s, may include other hosts)\n", repo)
-		fmt.Println("ID\tNAME\tSTATUS\tBUSY")
+		remoteTable := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+		fmt.Fprintln(remoteTable, "ID\tNAME\tSTATUS\tBUSY")
 		for _, x := range remote {
-			fmt.Printf("%d\t%s\t%s\t%t\n", x.ID, x.Name, x.Status, x.Busy)
+			fmt.Fprintf(remoteTable, "%d\t%s\t%s\t%t\n", x.ID, x.Name, x.Status, x.Busy)
 		}
 		if len(remote) == 0 {
-			fmt.Println("(none)")
+			fmt.Fprintln(remoteTable, "(none)")
+		}
+		if err := remoteTable.Flush(); err != nil {
+			return err
 		}
 	}
 	return nil
