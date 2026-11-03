@@ -116,11 +116,11 @@ var commandDocs = map[string]commandDoc{
 		Notes:       []string{"Refuses refresh when the running runner is busy, GitHub status is unavailable, or its registration cannot be verified.", "A running idle runner is automatically stopped and restarted; a stopped runner remains stopped.", "Existing registration volume is retained and the runner is never unregistered.", "If replacement fails, report the error and preserve the registration volume."},
 	},
 	"wizard": {
-		Summary: "Interactive, resumable runner setup.",
+		Summary:     "Interactive, resumable runner setup.",
 		Description: "Checks Docker, existing image, registration, service and running state. Skips completed stages, asks before changes and optionally creates a workflow-routing PR.",
-		Usage: []string{"ghr wizard [--repo OWNER/REPO]", "ghr assistant [--repo OWNER/REPO]"},
-		Options: []string{"--repo OWNER/REPO  Optional repository; prompted when omitted.", "-h, --help  Show this page."},
-		Examples: []string{"ghr wizard", "ghr assistant --repo r14r/BookBuilder"},
+		Usage:       []string{"ghr wizard [--repo OWNER/REPO]", "ghr assistant [--repo OWNER/REPO]"},
+		Options:     []string{"--repo OWNER/REPO  Optional repository; prompted when omitted.", "-h, --help  Show this page."},
+		Examples:    []string{"ghr wizard", "ghr assistant --repo r14r/BookBuilder"},
 	},
 	"list-installed": {
 		Summary:     "List managed local Docker runners; optionally include a repository's GitHub registrations.",
@@ -257,8 +257,8 @@ var commandDocs = map[string]commandDoc{
 func init() {
 	for alias, canonical := range map[string]string{
 		"runner configure": "runner register",
-		"assistant": "wizard",
-		"list": "list-installed",
+		"assistant":        "wizard",
+		"list":             "list-installed",
 		"runner pr":        "runner setup",
 		"runner start":     "start",
 		"runner stop":      "stop",
