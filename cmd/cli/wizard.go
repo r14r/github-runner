@@ -141,33 +141,45 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 		}
 	}
 	step(6, "Workflow routing", "")
-	fmt.Fprintf(out, "  Review routing with: ghr runner setup --repo %s\n", r.Repo)
-	ok, e := confirm("Launch workflow setup (creates a reviewable PR, does not merge automatically)?")
-	if e != nil {
-		return e
+	fmt.Fprintf(out, "       Review routing with: ghr runner setup --repo %s\n", r.Repo)
+	workflowDir, cleanup, checkErr := cloneDoctorWorkflowDirectory(r.Repo)
+	if checkErr == nil {
+		checkErr = checkDoctorWorkflowDirectory(workflowDir, io.Discard)
+		cleanup()
 	}
-	if ok {
-		setupArgs := []string{"--repo", r.Repo, "--no-merge"}
-		visibility, e := commandOutput("", "gh", "repo", "view", r.Repo, "--json", "visibility", "--jq", ".visibility")
+	if checkErr == nil {
+		fmt.Fprintln(out, "       Workflow already configured: SKIP")
+	} else {
+		fmt.Fprint(out, "      ")
+		ok, e := confirm("Launch workflow setup (creates a reviewable PR, does not merge automatically)?")
 		if e != nil {
 			return e
 		}
-		if strings.EqualFold(visibility, "PUBLIC") {
-			allowed, e := confirm("PUBLIC repository: allow routing workflows to this trusted self-hosted runner?")
+		if ok {
+			setupArgs := []string{"--repo", r.Repo, "--no-merge"}
+			visibility, e := commandOutput("", "gh", "repo", "view", r.Repo, "--json", "visibility", "--jq", ".visibility")
 			if e != nil {
 				return e
 			}
-			if !allowed {
-				fmt.Fprintln(out, "  Workflow setup skipped; no workflow changes made.")
-				return nil
+			if strings.EqualFold(visibility, "PUBLIC") {
+				allowed, e := confirm("PUBLIC repository: allow routing workflows to this trusted self-hosted runner?")
+				if e != nil {
+					return e
+				}
+				if !allowed {
+					fmt.Fprintln(out, "       Workflow setup skipped; no workflow changes made.")
+					return nil
+				}
+				setupArgs = append(setupArgs, "--allow-public")
 			}
-			setupArgs = append(setupArgs, "--allow-public")
-		}
-		if err = setupWorkflow(setupArgs); err != nil {
-			return err
+			if err = setupWorkflow(setupArgs); err != nil {
+				return err
+			}
 		}
 	}
-	fmt.Fprintf(out, "Wizard completed. Check: ghr status --repo %s; ghr doctor --repo %s\n", r.Repo, r.Repo)
+	fmt.Fprintln(out, "[7] Wizard completed.")
+	fmt.Fprintf(out, "       Check: ghr status --repo %s\n", r.Repo)
+	fmt.Fprintf(out, "              ghr doctor --repo %s\n", r.Repo)
 	return nil
 }
 
