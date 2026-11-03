@@ -38,7 +38,5 @@ func followRunnerLogs(container, tailValue string, run func(string, ...string) e
 }
 
 func (r dockerRunner) monitor() error {
-	return followRunnerLogs(r.Container, os.Getenv("RUNNER_MONITOR_TAIL"), func(program string, args ...string) error {
-		return commandRun("", program, args...)
-	})
+	return followRunnerAndSteps(r.Repo, r.Container, os.Getenv("RUNNER_MONITOR_TAIL"), os.Stdout)
 }
