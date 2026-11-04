@@ -257,3 +257,12 @@ stop or migrate any previously installed host launchd/systemd service.
 
 
 The Go CLI source and tests live in `cmd/cli/`; `extractions/setup-just` is recognized as a workflow-managed tool.
+
+### Next verification and PR review
+
+Run `just next` to see local validation steps, the current Git branch and working-tree state, and **all open GitHub pull requests** with their CI/merge status. It prints the appropriate review/checkout/merge commands without executing them.
+
+Run `just next --run` to run `git diff --check`, then `just build` (which already runs the full `just ci` pipeline), and retrieve GitHub checks for every open PR. It does **not** automatically check out or merge other branches. For the PR belonging to the current branch, an eligible merge is offered **only after explicit confirmation** and only when CI checks pass, the worktree is clean, and GitHub reports it mergeable. Drafts and outstanding review requirements block this merge.
+
+Requires Python 3, `gh` authenticated to GitHub, and the normal local build toolchain.
+
