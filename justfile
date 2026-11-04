@@ -8,8 +8,6 @@ default:
 # Fast-forward repository updates, run required checks, and rebuild the CLI.
 update:
     git pull --ff-only
-    just bootstrap
-    just ci
     just build
 
 # Prepare Go modules without registering a runner or touching host state.
@@ -22,7 +20,7 @@ bootstrap:
 # --run executes local checks, inspects remote checks and optionally merges
 # only the current branch's PR after explicit confirmation.
 next *args:
-    python3 scripts/next.py {{args}}
+    go run scripts/next.go {{args}}
 
 fmt:
     gofmt -w ./cmd ./internal
