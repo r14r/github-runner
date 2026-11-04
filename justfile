@@ -18,6 +18,12 @@ bootstrap:
     @go version
     go mod download
 
+# Show the next verification steps and review ALL open GitHub PRs.
+# --run executes local checks, inspects remote checks and optionally merges
+# only the current branch's PR after explicit confirmation.
+next *args:
+    python3 scripts/next.py {{args}}
+
 fmt:
     gofmt -w ./cmd ./internal
 
