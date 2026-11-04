@@ -66,19 +66,6 @@ func (s *Service) Stream(ctx context.Context, container string, tail int, emit f
  }
  // Diagnostic files are a runner implementation detail: observe, do not mutate.
  // This shell watches new Worker_*/Runner_* files without depending on the GitHub API.
- script:=`cd /runner/_diag 2>/dev/null || exit 0
-while :; do
- for f in Runner_*.log Worker_*.log; do
-  [ -f "$f" ] || continue
-  [ -e "/tmp/ghr-monitor-seen-$f" ] && continue
-  touch "/tmp/ghr-monitor-seen-$f"
-  (tail -n 0 -f "$f" | sed -u "s|^|$f: |") &
- done
- sleep 3
-done`
- // Use read-only command on the runner: no files are written inside the container.
- // The stable diagnostic tail starts with the current files; Docker logs remain authoritative.
- _=script
  var errs []error
  wg.Add(1)
  go func(){defer wg.Done()
