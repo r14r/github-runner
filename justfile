@@ -20,7 +20,7 @@ bootstrap:
 # --run executes local checks, inspects remote checks and optionally merges
 # only the current branch's PR after explicit confirmation.
 next *args:
-    python3 scripts/next.py {{args}}
+    go run scripts/next.go {{args}}
 
 fmt:
     gofmt -w ./cmd ./internal
