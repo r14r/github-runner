@@ -88,9 +88,9 @@ def main() -> int:
 
     print("\nNEXT STEPS — local validation")
     print("  Note: 'just build' already executes 'just ci', including format, vet, tests and race tests.")
-    show("git", "diff", "--check")
-    show("just", "build")
     if not args.run:
+        show("git", "diff", "--check")
+        show("just", "build")
         print("  Add --run to execute these checks.")
     else:
         if not execute("git", "diff", "--check"):
