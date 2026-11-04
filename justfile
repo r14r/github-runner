@@ -78,6 +78,10 @@ runner-stop repository:
 runner-status repository:
     go run ./cmd/cli status --repo "{{repository}}"
 
+# Start a localhost-only SSE and JSON monitoring API (no GitHub polling).
+monitor-api repository:
+    go run ./cmd/cli monitor-api --repo "{{repository}}" --listen 127.0.0.1:8765
+
 runner-monitor repository:
     go run ./cmd/cli monitor --repo "{{repository}}"
 
