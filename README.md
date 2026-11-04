@@ -266,3 +266,32 @@ Run `just next --run` to run `git diff --check`, then `just build` (which alread
 
 Requires Go, `gh` authenticated to GitHub, and the normal local build toolchain.
 
+
+### Local-first runner monitoring
+
+`ghr monitor --repo OWNER/REPO` follows the local runner's Docker log and
+diagnostic files in `/runner/_diag`. It does **not** call the GitHub API.
+The diagnostic output is best-effort and cannot guarantee complete step
+stdout/stderr or authoritative GitHub step conclusions.
+
+Use `ghr monitor --repo OWNER/REPO --github` only when GitHub's step
+statuses are required; this opt-in legacy mode polls GitHub and consumes
+API quota.
+
+Start a localhost-only JSON/SSE API with:
+
+```sh
+ghr monitor-api --repo r14r/github-runner --listen 127.0.0.1:8765
+# alternatively
+just monitor-api r14r/github-runner
+curl http://127.0.0.1:8765/api/monitor
+curl -N http://127.0.0.1:8765/api/monitor/runners/github-runner-r14r-github-runner/events
+```
+
+The API also provides `/api/monitor/runners`,
+`/api/monitor/runners/{container}`, and
+`/api/monitor/runners/{container}/logs`. Event fields are `type`,
+`runner`, `source`, `message`, and `time`. Diagnostic files may
+contain sensitive data; do not expose the API publicly. This API is intended
+for one selected repository/container per server process.
+
