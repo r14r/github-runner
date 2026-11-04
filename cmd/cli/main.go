@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"net/http"
+	"github.com/r14r/github-runner/internal/monitor"
 )
 
 var version = "dev"
@@ -72,6 +74,14 @@ func run(args []string, executable, cwd string) error {
 		}
 		usage()
 		return nil
+	case "monitor-api":
+		repo, rest, err := requireRepo(args[1:]); if err != nil { return err }
+		listen := "127.0.0.1:8765"
+		if len(rest)==2 && rest[0]=="--listen" {listen=rest[1]} else if len(rest)!=0{return fmt.Errorf("usage: ghr monitor-api --repo OWNER/REPO [--listen 127.0.0.1:8765]")}
+		if !strings.HasPrefix(listen,"127.0.0.1:") && !strings.HasPrefix(listen,"localhost:"){return errors.New("monitor API must bind to localhost")}
+		r,err:=newDockerRunner(repo,"");if err!=nil{return err}
+		fmt.Printf("Local monitor API: http://%s/api/monitor\n",listen)
+		return http.ListenAndServe(listen,monitor.New([]monitor.Runner{{Repository:r.Repo,Container:r.Container}}).Handler())
 	case "self-uninstall":
 		return selfUninstall(executable, args[1:])
 	case "actions":
@@ -154,13 +164,13 @@ func run(args []string, executable, cwd string) error {
 		if err != nil {
 			return err
 		}
-		if err := noExtras(action, rest); err != nil {
-			return err
-		}
+		githubMonitoring := action=="monitor" && len(rest)==1 && rest[0]=="--github"
+		if !githubMonitoring {if err := noExtras(action, rest); err != nil {return err}}
 		runner, err := newDockerRunner(repo, env)
 		if err != nil {
 			return err
 		}
+		if githubMonitoring{return followRunnerAndSteps(runner.Repo,runner.Container,os.Getenv("RUNNER_MONITOR_TAIL"),os.Stdout)}
 		return runner.action(action)
 
 	case "runner":
