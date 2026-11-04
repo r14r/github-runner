@@ -8,8 +8,6 @@ default:
 # Fast-forward repository updates, run required checks, and rebuild the CLI.
 update:
     git pull --ff-only
-    just bootstrap
-    just ci
     just build
 
 # Prepare Go modules without registering a runner or touching host state.
