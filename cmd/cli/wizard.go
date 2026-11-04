@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -141,14 +142,18 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 		}
 	}
 	step(6, "Workflow routing", "")
-	fmt.Fprintf(out, "       Review routing with: ghr runner setup --repo %s\n", r.Repo)
+	fmt.Fprintf(out, "      Review routing with: ghr runner setup --repo %s\n", r.Repo)
 	workflowDir, cleanup, checkErr := cloneDoctorWorkflowDirectory(r.Repo)
-	if checkErr == nil {
-		checkErr = checkDoctorWorkflowDirectory(workflowDir, io.Discard)
-		cleanup()
+	if checkErr != nil {
+		return fmt.Errorf("cannot determine workflow routing: %w", checkErr)
 	}
-	if checkErr == nil {
-		fmt.Fprintln(out, "       Workflow already configured: SKIP")
+	needsSetup, checkErr := workflowNeedsSelfHostedSetup(workflowDir)
+	cleanup()
+	if checkErr != nil {
+		return checkErr
+	}
+	if !needsSetup {
+		fmt.Fprintln(out, "      Workflow already configured: SKIP")
 	} else {
 		fmt.Fprint(out, "      ")
 		ok, e := confirm("Launch workflow setup (creates a reviewable PR, does not merge automatically)?")
@@ -185,4 +190,59 @@ func wizardCommand(args []string, assets string, in io.Reader, out io.Writer) er
 
 func runWizard(args []string, assets string) error {
 	return wizardCommand(args, assets, os.Stdin, os.Stdout)
+}
+
+// workflowNeedsSelfHostedSetup detects existing self-hosted selectors without
+// requiring the specific RUNNER_LABELS_JSON expression enforced by doctor.
+func workflowNeedsSelfHostedSetup(root string) (bool, error) {
+	files := []string{}
+	for _, pattern := range []string{"*.yml", "*.yaml"} {
+		found, err := filepath.Glob(filepath.Join(root, ".github", "workflows", pattern))
+		if err != nil { return false, err }
+		files = append(files, found...)
+	}
+	if len(files) == 0 { return false, fmt.Errorf("no workflow files found") }
+	jobs := 0
+	for _, path := range files {
+		data, err := os.ReadFile(path)
+		if err != nil { return false, err }
+		inJobs, inJob, hasSelector, selfHosted, reusable, inRunsOnList := false, false, false, false, false, false
+		flush := func() bool {
+			if !inJob { return false }
+			if reusable && !hasSelector { return false }
+			jobs++
+			return !hasSelector || !selfHosted
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSuffix(line, "\r")
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "#") { continue }
+			if !strings.HasPrefix(line, " ") {
+				if flush() { return true, nil }
+				inJobs = trimmed == "jobs:"
+				inJob, hasSelector, selfHosted, reusable, inRunsOnList = false, false, false, false, false
+				continue
+			}
+			if !inJobs { continue }
+			if match := doctorWorkflowJob.FindStringSubmatch(line); match != nil {
+				if flush() { return true, nil }
+				inJob, hasSelector, selfHosted, reusable, inRunsOnList = true, false, false, false, false
+				continue
+			}
+			if !inJob { continue }
+			if match := doctorRunsOn.FindStringSubmatch(line); match != nil {
+				hasSelector, inRunsOnList = true, true
+				selector := strings.ToLower(match[1])
+				selfHosted = strings.Contains(selector, "self-hosted") || doctorRunnerVariable.MatchString(selector)
+				continue
+			}
+			if doctorReusableJob.MatchString(line) { reusable = true }
+			if inRunsOnList && strings.HasPrefix(trimmed, "- ") {
+				if strings.Contains(strings.ToLower(trimmed), "self-hosted") { selfHosted = true }
+			} else if inRunsOnList && !strings.HasPrefix(line, "      ") { inRunsOnList = false }
+		}
+		if flush() { return true, nil }
+	}
+	if jobs == 0 { return false, fmt.Errorf("no locally scheduled workflow jobs found") }
+	return false, nil
 }
