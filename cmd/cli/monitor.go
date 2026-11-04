@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/r14r/github-runner/internal/monitor"
 	"os"
 	"strconv"
 	"strings"
-	"context"
-	"github.com/r14r/github-runner/internal/monitor"
 )
 
 const defaultMonitorTail = 10
@@ -41,7 +41,9 @@ func followRunnerLogs(container, tailValue string, run func(string, ...string) e
 
 func (r dockerRunner) monitor() error {
 	tail, err := monitorTail(os.Getenv("RUNNER_MONITOR_TAIL"))
-	if err != nil { return err }
-	s := monitor.New([]monitor.Runner{{Repository:r.Repo,Container:r.Container}})
-	return s.Stream(context.Background(),r.Container,tail,func(e monitor.Event){fmt.Fprintf(os.Stdout,"[%s] %s\n",e.Source,e.Message)})
+	if err != nil {
+		return err
+	}
+	s := monitor.New([]monitor.Runner{{Repository: r.Repo, Container: r.Container}})
+	return s.Stream(context.Background(), r.Container, tail, func(e monitor.Event) { fmt.Fprintf(os.Stdout, "[%s] %s\n", e.Source, e.Message) })
 }
