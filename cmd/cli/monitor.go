@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/r14r/github-runner/internal/monitor"
+	"github.com/r14r/github-runner/src/monitor"
 	"os"
 	"strconv"
 	"strings"

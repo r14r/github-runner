@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/r14r/github-runner/internal/monitor"
+	"github.com/r14r/github-runner/src/monitor"
 	"net/http"
 	"os"
 	"os/exec"

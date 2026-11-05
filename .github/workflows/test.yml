@@ -17,7 +17,7 @@ jobs:
           go-version-file: go.mod
       - name: Check Go formatting (read-only)
         run: |
-          unformatted="$(gofmt -l ./cmd ./internal)"
+          unformatted="$(gofmt -l ./cmd ./src)"
           if [ -n "$unformatted" ]; then
             printf 'Unformatted Go files:\n%s\n' "$unformatted" >&2
             exit 1

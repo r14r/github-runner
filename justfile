@@ -20,13 +20,13 @@ bootstrap:
 # --run executes local checks, inspects remote checks and optionally merges
 # only the current branch's PR after explicit confirmation.
 next *args:
-    go run scripts/next.go {{args}}
+    go run bin/next.go {{args}}
 
 fmt:
-    gofmt -w ./cmd ./internal
+    gofmt -w ./cmd ./src
 
 fmt-check:
-    @files="$(gofmt -l ./cmd ./internal)"; test -z "$files" || { printf 'Unformatted Go files:\n%s\n' "$files" >&2; exit 1; }
+    @files="$(gofmt -l ./cmd ./src)"; test -z "$files" || { printf 'Unformatted Go files:\n%s\n' "$files" >&2; exit 1; }
 
 lint: fmt-check
     go vet ./...
