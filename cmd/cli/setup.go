@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/r14r/github-runner/internal/workflow"
+	"github.com/r14r/github-runner/src/workflow"
 )
 
 func commandOutput(dir string, program string, args ...string) (string, error) {
