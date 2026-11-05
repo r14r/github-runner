@@ -28,6 +28,7 @@ func TestRepoFlagsAndAliases(t *testing.T) {
 	}
 }
 func TestMissingInvalidDuplicateRepoFlags(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
 	cases := [][]string{
 		nil, {"example-org/demo-app"}, {"--repo"}, {"--repo="}, {"--repo", "wrong"},
 		{"--repo", "example-org/demo-app", "--repository", "sample-org/second-app"},
