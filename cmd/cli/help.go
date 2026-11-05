@@ -387,7 +387,8 @@ RUNNER COMMANDS:
   list-installed      List local runners; --repo also lists GitHub registrations
   uninstall           Safely unregister/remove one or all local runners
   self-uninstall      Remove only the installed CLI and runtime assets
-  runner              Advanced Docker commands and workflow setup\n  actions             List, cancel and delete GitHub Actions workflow runs
+  runner              Advanced Docker commands and workflow setup
+  actions             List, cancel and delete GitHub Actions workflow runs
   version             Print the CLI version
   help                Show this overview or detailed command help
 
@@ -423,7 +424,9 @@ MORE HELP:
   ghr status --help
   ghr help uninstall
   ghr runner --help
-  ghr help actions delete\n  ghr actions delete --help\n  ghr help runner setup
+  ghr help actions delete
+  ghr actions delete --help
+  ghr help runner setup
   ghr runner setup --help
 
 The full binary name is 'github-runner-cli'; 'ghr' is a shell shortcut if
