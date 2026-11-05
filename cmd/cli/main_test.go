@@ -110,6 +110,7 @@ func TestRegisterFlagParsing(t *testing.T) {
 	}
 }
 func TestSetupOptions(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
 	o, e := parseSetup([]string{"--repo", "example-org/demo-app", "--workflow", ".github/workflows/ci.yml", "--job", "python", "--allow-public"})
 	if e != nil || o.repo != "example-org/demo-app" || len(o.workflows) != 1 || o.jobs[0] != "python" || !o.allowPublic {
 		t.Fatalf("%+v: %v", o, e)
