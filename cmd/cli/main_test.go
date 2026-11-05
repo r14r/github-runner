@@ -36,6 +36,7 @@ func TestAssetsError(t *testing.T) {
 	}
 }
 func TestBadArgumentsDoNotModifyRunnerState(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
 	root := testAssets(t)
 	for _, args := range [][]string{
 		{"install"}, {"install", "example-org/demo-app", "--bad"},
