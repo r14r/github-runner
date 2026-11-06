@@ -74,6 +74,7 @@ func TestParseActionsArgsAndFilters(t *testing.T) {
 }
 
 func TestActionsRejectInvalidFlagsBeforeAnySideEffects(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
 	bad := [][]string{
 		nil, {"unknown"}, {"list"}, {"delete", "--state", "failure"},
 		{"list", "--repo", "invalid"}, {"list", "--repo", "example-org/demo", "--yes"},

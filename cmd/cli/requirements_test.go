@@ -101,6 +101,7 @@ func containsString(xs []string, s string) bool {
 	return false
 }
 func TestRequirementsOutputAndMissingFlags(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
 	for _, args := range [][]string{nil, {"--output", "toolchain.yaml"}, {"--repo"}, {"--repo", "example-org/demo-app", "--output"}, {"--repo", "example-org/demo-app", "--unknown"}, {"--repo", "example-org/demo-app", "--output", "a", "--output", "b"}} {
 		if _, _, err := parseRequirementsArgs(args); err == nil {
 			t.Errorf("accepted %q", args)
