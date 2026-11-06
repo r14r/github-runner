@@ -37,6 +37,9 @@ func TestAssetsError(t *testing.T) {
 }
 func TestBadArgumentsDoNotModifyRunnerState(t *testing.T) {
 	t.Setenv("RUNNER_REPO", "")
+	// Invalid arguments must be rejected before any external Docker/GitHub call.
+	// An empty PATH makes an accidental subprocess fail immediately, not hang.
+	t.Setenv("PATH", t.TempDir())
 	root := testAssets(t)
 	for _, args := range [][]string{
 		{"install"}, {"install", "example-org/demo-app", "--bad"},
