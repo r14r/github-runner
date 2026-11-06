@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,9 +24,35 @@ func testAssets(t *testing.T) string {
 	return root
 }
 func TestHelpAndVersion(t *testing.T) {
-	for _, args := range [][]string{nil, {"--help"}, {"version"}} {
-		if e := run(args, "/tmp/github-runner-cli", t.TempDir()); e != nil {
-			t.Fatal(e)
+	// Capture normal CLI output so a failing test elsewhere does not dump
+	// the complete command help into go test's failure report.
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{nil, "RUNNER COMMANDS:"},
+		{[]string{"--help"}, "RUNNER COMMANDS:"},
+		{[]string{"version"}, "github-runner-cli "},
+	} {
+		reader, writer, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		original := os.Stdout
+		os.Stdout = writer
+		runErr := run(tc.args, "/tmp/github-runner-cli", t.TempDir())
+		os.Stdout = original
+		_ = writer.Close()
+		data, readErr := io.ReadAll(reader)
+		_ = reader.Close()
+		if runErr != nil {
+			t.Fatalf("run(%q): %v", tc.args, runErr)
+		}
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if !strings.Contains(string(data), tc.want) {
+			t.Errorf("run(%q): expected %q in output %q", tc.args, tc.want, data)
 		}
 	}
 }
