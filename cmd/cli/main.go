@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/r14r/github-runner/src/monitor"
@@ -98,6 +99,8 @@ func run(args []string, executable, cwd string) error {
 		return selfUninstall(executable, args[1:])
 	case "actions":
 		return actionsCommand(args[1:], newGitHubActionsAPI(), os.Stdout)
+	case "diskspace":
+		return diskspaceCommand(context.Background(), args[1:], systemDiskspaceRunner(), os.Stdout)
 	}
 	env, err := assetsDir(executable, cwd)
 	if err != nil {
