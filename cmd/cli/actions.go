@@ -494,7 +494,6 @@ func awaitRunCompleted(api actionsAPI, repo string, id int64) (workflowRun, erro
 	return workflowRun{}, fmt.Errorf("run %d did not complete after cancellation; not deleted", id)
 }
 
-    
 // actionsClean removes successful and failed completed runs, and cancels
 // queued runs before deleting them only after GitHub confirms cancellation.
 // No in-progress run is cancelled, and deletion always requires --yes.
