@@ -71,13 +71,13 @@ type actionsAPI struct {
 func parseActionsArgs(args []string) (actionsOptions, error) {
 	var o actionsOptions
 	if len(args) == 0 {
-		return o, errors.New("actions subcommand required: list, cancel or delete (use 'ghr actions --help')")
+		return o, errors.New("actions subcommand required: list, cancel, delete or clean (use 'ghr actions --help')")
 	}
 	o.operation = strings.ToLower(args[0])
 	switch o.operation {
-	case "list", "cancel", "delete":
+	case "list", "cancel", "delete", "clean":
 	default:
-		return o, fmt.Errorf("unknown actions subcommand %q; expected list, cancel or delete", args[0])
+		return o, fmt.Errorf("unknown actions subcommand %q; expected list, cancel, delete or clean", args[0])
 	}
 	repo, rest, err := requireRepo(args[1:])
 	if err != nil {
@@ -128,8 +128,11 @@ func parseActionsArgs(args []string) (actionsOptions, error) {
 	}
 	// Prevent accidental bulk cancellation/deletion: an operator must
 	// explicitly select a state (including 'all') before committing changes.
-	if o.operation != "list" && o.yes && !o.stateSet {
+	if o.operation != "list" && o.operation != "clean" && o.yes && !o.stateSet {
 		return o, errors.New("--yes requires explicit --state (use --state all to select all runs)")
+	}
+	if o.operation == "clean" && (o.stateSet || o.withCancel) {
+		return o, errors.New("actions clean uses fixed states: success, failure, queued; --state and --with-cancel are not applicable")
 	}
 	return o, nil
 }
@@ -365,6 +368,9 @@ func actionsCommand(args []string, api actionsAPI, output io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if o.operation == "clean" {
+		return actionsClean(o, api, output)
+	}
 	// Complete retrieval before any modification. IDs are snapshotted once,
 	// so deletion cannot shift subsequent pagination offsets.
 	all, err := api.list(o.repo, o.state)
@@ -486,4 +492,81 @@ func awaitRunCompleted(api actionsAPI, repo string, id int64) (workflowRun, erro
 		}
 	}
 	return workflowRun{}, fmt.Errorf("run %d did not complete after cancellation; not deleted", id)
+}
+
+    
+// actionsClean removes successful and failed completed runs, and cancels
+// queued runs before deleting them only after GitHub confirms cancellation.
+// No in-progress run is cancelled, and deletion always requires --yes.
+func actionsClean(o actionsOptions, api actionsAPI, output io.Writer) error {
+	states := []string{"success", "failure", "queued"}
+	snapshot := make(map[string][]workflowRun, len(states))
+	for _, state := range states {
+		runs, err := api.list(o.repo, state)
+		if err != nil {
+			return fmt.Errorf("cannot list %s workflow runs: %w", state, err)
+		}
+		for _, run := range runs {
+			if !stateMatchesRun(run, state) {
+				return fmt.Errorf("GitHub returned run %d outside clean state %s", run.ID, state)
+			}
+		}
+		snapshot[state] = runs
+	}
+	fmt.Fprintf(output, "Repository: %s\nActions clean: success=%d failure=%d queued=%d (dry-run=%t)\n", o.repo,
+		len(snapshot["success"]), len(snapshot["failure"]), len(snapshot["queued"]), !o.yes)
+	if !o.yes {
+		for _, state := range states {
+			for _, run := range snapshot[state] {
+				if state == "queued" {
+					fmt.Fprintf(output, "WOULD CANCEL THEN DELETE %d (queued)\n", run.ID)
+				} else {
+					fmt.Fprintf(output, "WOULD DELETE %d (%s)\n", run.ID, state)
+				}
+			}
+		}
+		fmt.Fprintln(output, "DRY RUN: no changes made. Add --yes to execute.")
+		return nil
+	}
+	deleted, cancelled, skipped := 0, 0, 0
+	seen := map[int64]bool{}
+	for _, state := range states {
+		for _, run := range snapshot[state] {
+			if run.ID <= 0 || seen[run.ID] {
+				return fmt.Errorf("invalid or duplicate workflow run ID %d; stopping cleanup", run.ID)
+			}
+			seen[run.ID] = true
+			latest, err := api.get(o.repo, run.ID)
+			if err != nil {
+				return fmt.Errorf("cannot verify run %d: %w", run.ID, err)
+			}
+			if state == "queued" {
+				if latest.Status != "queued" {
+					skipped++
+					continue
+				}
+				if err := api.cancel(o.repo, run.ID); err != nil {
+					return fmt.Errorf("cannot cancel queued run %d: %w", run.ID, err)
+				}
+				cancelled++
+				latest, err = awaitRunCompleted(api, o.repo, run.ID)
+				if err != nil {
+					return err
+				}
+				if latest.Conclusion != "cancelled" {
+					return fmt.Errorf("queued run %d completed with %q, not cancelled; refusing deletion", run.ID, latest.Conclusion)
+				}
+			} else if latest.Status != "completed" || latest.Conclusion != state {
+				skipped++
+				continue
+			}
+			if err := api.delete(o.repo, run.ID); err != nil {
+				return fmt.Errorf("cannot delete run %d: %w", run.ID, err)
+			}
+			deleted++
+			fmt.Fprintf(output, "DELETED %d (%s)\n", run.ID, state)
+		}
+	}
+	fmt.Fprintf(output, "Result: cancelled=%d deleted=%d skipped=%d\n", cancelled, deleted, skipped)
+	return nil
 }
