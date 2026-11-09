@@ -34,11 +34,13 @@ var commandDocs = map[string]commandDoc{
 		Description: "Check the Colima data filesystem and Docker storage usage, monitor capacity, or preview safe cleanup. Does not require a repository or installed runner.",
 		Usage: []string{
 			"ghr diskspace --list",
+			"ghr diskspace --doctor",
 			"ghr diskspace --monitor [--interval 30s]",
 			"ghr diskspace --clean [--yes]",
 		},
 		Options: []string{
 			"--list                  Show Colima filesystem and Docker disk usage (default).",
+			"--doctor                Read-only checks of Colima, host, cache, images and large host directories.",
 			"--monitor               Periodically recheck disk usage; Ctrl+C to stop.",
 			"--interval DURATION     Monitor interval (default 30s, minimum 1s).",
 			"--clean                 Preview removal of unused build cache and dangling images.",
@@ -46,7 +48,8 @@ var commandDocs = map[string]commandDoc{
 		},
 		Examples: []string{
 			"ghr diskspace --list",
-			"ghr diskspace --monitor --interval 1m",
+			"ghr diskspace --doctor",
+			"ghr diskspace --monitor --interval 1m"
 			"ghr diskspace --clean",
 			"ghr diskspace --clean --yes",
 		},
