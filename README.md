@@ -303,6 +303,7 @@ for one selected repository/container per server process.
 
 ```bash
 ghr diskspace --list                         # one-time capacity and Docker usage report
+ghr diskspace --doctor                       # read-only storage diagnosis and recommendations
 ghr diskspace --monitor --interval 30s        # repeat until Ctrl+C
 ghr diskspace --clean                        # preview cleanup, no changes
 ghr diskspace --clean --yes                  # delete unused build cache and dangling images

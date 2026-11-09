@@ -32,6 +32,8 @@ func TestDiskspaceOptions(t *testing.T) {
 		{"--monitor", "--interval", "invalid"},
 		{"--monitor", "--interval", "0s"},
 		{"--clean", "--interval", "2s"},
+		{"--doctor", "--yes"},
+		{"--doctor", "--monitor"},
 		{"--unknown"},
 	} {
 		if _, err := parseDiskspaceArgs(args); err == nil {
@@ -102,6 +104,54 @@ func TestDiskspaceCleanOnlyPrunesCacheAndDanglingImages(t *testing.T) {
 	for i, call := range calls {
 		if call != want[i] {
 			t.Errorf("call %d: %q want %q", i, call, want[i])
+		}
+	}
+}
+
+func TestDiskspaceDoctorParsers(t *testing.T) {
+	o, err := parseDiskspaceArgs([]string{"--doctor"})
+	if err != nil || o.mode != "doctor" {
+		t.Fatalf("doctor options: %+v %v", o, err)
+	}
+	rows, err := readDockerDiskRows("{\"Type\":\"Build Cache\",\"Size\":\"9.8GB\",\"Reclaimable\":\"7.2GB\"}\n")
+	if err != nil || len(rows) != 1 || parseDockerBytes(rows[0].Reclaimable) < 7e9 {
+		t.Fatalf("invalid Docker cache parsing: %+v %v", rows, err)
+	}
+	sizes := parseDU("1024\t/home/small\n4096\t/home/large\n")
+	if len(sizes) != 2 || sizes[0].Path != "/home/large" {
+		t.Fatalf("unexpected du sizes: %+v", sizes)
+	}
+}
+
+func TestDiskspaceDoctorNeverPrunes(t *testing.T) {
+	var calls []string
+	runner := diskspaceRunner{run: func(_ context.Context, name string, args ...string) (string, error) {
+		command := name + " " + strings.Join(args, " ")
+		calls = append(calls, command)
+		if strings.Contains(command, "prune") || strings.Contains(command, "rm ") {
+			return "", errors.New("doctor attempted destructive operation")
+		}
+		switch name {
+		case "colima", "df":
+			return "Filesystem 1024-blocks Used Available Capacity Mounted on\n/dev/vdb1 100000000 98000000 2000000 98% /mnt/lima-colima\n", nil
+		case "docker":
+			return "{\"Type\":\"Build Cache\",\"Size\":\"9.8GB\",\"Reclaimable\":\"7.2GB\",\"Active\":0}\n", nil
+		case "du":
+			return "1024\t/safe\n", nil
+		}
+		return "", errors.New("not installed")
+	}}
+	var out bytes.Buffer
+	if err := diskspaceCommand(context.Background(), []string{"--doctor"}, runner, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "CRITICAL") || !strings.Contains(out.String(), "Recommended actions") ||
+		!strings.Contains(out.String(), "builder prune") {
+		t.Fatalf("missing useful recommendations: %s", out.String())
+	}
+	for _, call := range calls {
+		if strings.Contains(call, "prune") {
+			t.Fatalf("doctor ran a destructive command: %s", call)
 		}
 	}
 }
