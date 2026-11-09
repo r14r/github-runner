@@ -25,9 +25,9 @@ func parseDiskspaceArgs(args []string) (diskspaceOptions, error) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
-		case "--list", "--monitor", "--clean":
+		case "--list", "--monitor", "--clean", "--doctor":
 			if modeSeen {
-				return o, errors.New("specify only one of --list, --monitor or --clean")
+				return o, errors.New("specify only one of --list, --monitor, --clean or --doctor")
 			}
 			o.mode, modeSeen = strings.TrimPrefix(arg, "--"), true
 		case "--yes":
@@ -166,6 +166,8 @@ func diskspaceCommand(ctx context.Context, args []string, runner diskspaceRunner
 		return err
 	}
 	switch o.mode {
+	case "doctor":
+		return diskspaceDoctor(ctx, runner, out)
 	case "list":
 		return diskspaceSnapshot(ctx, runner, out)
 	case "clean":
