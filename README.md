@@ -295,3 +295,17 @@ The API also provides `/api/monitor/runners`,
 contain sensitive data; do not expose the API publicly. This API is intended
 for one selected repository/container per server process.
 
+
+
+## Disk space management (v0.6.0)
+
+`ghr diskspace` checks Docker usage and the Colima data filesystem where Docker images and runner volumes are stored. Unlike `ghr monitor`, it does not require a GitHub repository or runner registration.
+
+```bash
+ghr diskspace --list                         # one-time capacity and Docker usage report
+ghr diskspace --monitor --interval 30s        # repeat until Ctrl+C
+ghr diskspace --clean                        # preview cleanup, no changes
+ghr diskspace --clean --yes                  # delete unused build cache and dangling images
+```
+
+Storage conditions are reported as OK, WARNING (<15 GiB free or >=85% used), or CRITICAL (<5 GiB free or >=95% used). The clean mode never removes Docker volumes, registered runners, containers, or images referenced by containers. It does remove build cache and dangling images and may require rebuilding them later. On hosts without Colima, the command reports the missing Colima metric but still shows Docker storage usage. `--clean` defaults to a dry run; `--yes` is required to make changes.
