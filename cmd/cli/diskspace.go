@@ -21,7 +21,7 @@ type diskspaceOptions struct {
 
 func parseDiskspaceArgs(args []string) (diskspaceOptions, error) {
 	o := diskspaceOptions{mode: "list", interval: 30 * time.Second}
-	modeSeen := false
+	modeSeen, intervalSeen := false, false
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch arg {
@@ -45,6 +45,7 @@ func parseDiskspaceArgs(args []string) (diskspaceOptions, error) {
 				return o, errors.New("--interval must be a duration >= 1s")
 			}
 			o.interval = d
+			intervalSeen = true
 		default:
 			return o, fmt.Errorf("unknown diskspace option %q", arg)
 		}
@@ -52,7 +53,7 @@ func parseDiskspaceArgs(args []string) (diskspaceOptions, error) {
 	if o.yes && o.mode != "clean" {
 		return o, errors.New("--yes is only valid with --clean")
 	}
-	if o.mode != "monitor" && o.interval != 30*time.Second {
+	if o.mode != "monitor" && intervalSeen {
 		return o, errors.New("--interval is only valid with --monitor")
 	}
 	return o, nil
