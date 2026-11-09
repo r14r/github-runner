@@ -149,11 +149,40 @@ func diskspaceDoctor(ctx context.Context, runner diskspaceRunner, out io.Writer)
 	// Avoid traversing the entire filesystem or crossing mounted volumes; only
 	// immediate home children, sorted by size. 'du' may lack permission for
 	// some macOS-managed folders, in which case it reports a partial result.
-	if raw, ok := report("du", "-sk", filepath.Join(home, "*")); ok {
-		entries := parseDU(raw)
-		for i, entry := range entries { fmt.Fprintf(out, "  %2d. %7.2f GiB  %s\n", i+1, bytesGiB(entry.Bytes), entry.Path) }
-		if len(entries) == 0 { problems = append(problems, "No host directories measured") }
+	roots := []string{home}
+	cloud := "/Users/Shared/CLOUD"
+	if cloud != home {
+		if st, err := os.Stat(cloud); err == nil && st.IsDir() { roots = append(roots, cloud) }
 	}
+	var paths []string
+	for _, root := range roots {
+		items, err := os.ReadDir(root)
+		if err != nil {
+			problems = append(problems, "Cannot list "+root+": "+err.Error())
+			continue
+		}
+		for _, item := range items {
+			if item.IsDir() { paths = append(paths, filepath.Join(root, item.Name())) }
+		}
+	}
+	var measured []directorySize
+	for _, path := range paths {
+		// Restrict individual scans so an enormous or inaccessible tree
+		// does not block the entire doctor report.
+		scanCtx, stop := context.WithTimeout(ctx, 8*time.Second)
+		raw, err := runner.run(scanCtx, "du", "-sk", path)
+		stop()
+		if err != nil {
+			fmt.Fprintf(out, "  SKIPPED: %s (%v)\n", path, err)
+			continue
+		}
+		measured = append(measured, parseDU(raw)...)
+	}
+	sort.Slice(measured, func(i, j int) bool { return measured[i].Bytes > measured[j].Bytes })
+	if len(measured) > 10 { measured = measured[:10] }
+	for i, entry := range measured { fmt.Fprintf(out, "  %2d. %7.2f GiB  %s\n", i+1, bytesGiB(entry.Bytes), entry.Path) }
+	if len(measured) == 0 { problems = append(problems, "No host directories measured") }
+
 	fmt.Fprintln(out, "\nRecommended actions:")
 	for i, rec := range recommendations { fmt.Fprintf(out, "  %d. %s\n", i+1, rec) }
 	if len(recommendations) == 0 { fmt.Fprintln(out, "  No urgent cleanup indicated by available metrics.") }
