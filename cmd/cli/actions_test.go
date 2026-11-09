@@ -475,3 +475,109 @@ func TestFilteredBulkDeletePassesStateToAPI(t *testing.T) {
 		t.Errorf("state=%s ops=%v", selectedState, ops)
 	}
 }
+
+func TestActionsCleanDryRun(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
+	events := []string{}
+	runs := []workflowRun{
+		runFixture(1, "completed", "success"),
+		runFixture(2, "completed", "failure"),
+		runFixture(3, "queued", ""),
+	}
+	api := fixtureActionsAPI(runs, &events)
+	api.list = func(_ string, state string) ([]workflowRun, error) {
+		events = append(events, "list "+state)
+		var selected []workflowRun
+		for _, run := range runs {
+			if stateMatchesRun(run, state) {
+				selected = append(selected, run)
+			}
+		}
+		return selected, nil
+	}
+	var out bytes.Buffer
+	if err := actionsCommand([]string{"clean", "--repo", "example-org/demo"}, api, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(events, []string{"list success", "list failure", "list queued"}) {
+		t.Fatalf("unexpected mutations: %v", events)
+	}
+	for _, want := range []string{"WOULD DELETE 1", "WOULD DELETE 2", "WOULD CANCEL THEN DELETE 3"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q: %s", want, out.String())
+		}
+	}
+	for _, args := range [][]string{
+		{"clean", "--repo", "example-org/demo", "--state", "all"},
+		{"clean", "--repo", "example-org/demo", "--with-cancel"},
+	} {
+		if _, err := parseActionsArgs(args); err == nil {
+			t.Errorf("accepted invalid clean args: %q", args)
+		}
+	}
+}
+
+func TestActionsCleanExecutesVerifiedStates(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
+	events := []string{}
+	stateRuns := map[string][]workflowRun{
+		"success": {runFixture(1, "completed", "success")},
+		"failure": {runFixture(2, "completed", "failure")},
+		"queued":  {runFixture(3, "queued", "")},
+	}
+	cancelled := false
+	api := actionsAPI{
+		list: func(_ string, state string) ([]workflowRun, error) {
+			events = append(events, "list "+state)
+			return stateRuns[state], nil
+		},
+		get: func(_ string, id int64) (workflowRun, error) {
+			events = append(events, fmt.Sprintf("get %d", id))
+			if id == 3 && cancelled {
+				return runFixture(3, "completed", "cancelled"), nil
+			}
+			for _, runs := range stateRuns {
+				for _, r := range runs {
+					if r.ID == id {
+						return r, nil
+					}
+				}
+			}
+			return workflowRun{}, errors.New("unknown run")
+		},
+		cancel: func(_ string, id int64) error {
+			events = append(events, fmt.Sprintf("cancel %d", id))
+			cancelled = true
+			return nil
+		},
+		delete: func(_ string, id int64) error { events = append(events, fmt.Sprintf("delete %d", id)); return nil },
+		sleep:  func(time.Duration) {},
+	}
+	if err := actionsCommand([]string{"clean", "--repo", "example-org/demo", "--yes"}, api, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(events, []string{"list success", "list failure", "list queued", "get 1", "delete 1", "get 2", "delete 2", "get 3", "cancel 3", "get 3", "delete 3"}) {
+		t.Fatalf("unexpected operation order: %v", events)
+	}
+}
+
+func TestActionsCleanPreservesChangedRuns(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
+	var deleted bool
+	api := actionsAPI{
+		list: func(_ string, state string) ([]workflowRun, error) {
+			if state == "success" {
+				return []workflowRun{runFixture(1, "completed", "success")}, nil
+			}
+			return nil, nil
+		},
+		get:    func(_ string, id int64) (workflowRun, error) { return runFixture(id, "in_progress", ""), nil },
+		delete: func(_ string, id int64) error { deleted = true; return nil },
+	}
+	if err := actionsCommand([]string{"clean", "--repo", "example-org/demo", "--yes"}, api, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if deleted {
+		t.Fatal("deleted a run whose state changed")
+	}
+}
