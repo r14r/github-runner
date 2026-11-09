@@ -29,6 +29,14 @@ var commandDocs = map[string]commandDoc{
 		Options:     []string{"<command>              Optional command name (e.g. status, install, list-installed).", "<subcommand>           Required for detailed runner subcommand documentation.", "-h, --help             Show help (accepted before any required option)."},
 		Examples:    []string{"ghr help", "ghr help status", "ghr status --help", "ghr help runner setup", "ghr runner setup --help"},
 	},
+	"clean": {
+		Summary: "Preview or remove old runner diagnostic log files.",
+		Description: "Selects only Runner_*.log and Worker_*.log under the specified runner's /runner/_diag. The container must be running. This does not remove registrations, workspaces, volumes or Docker log history.",
+		Usage: []string{"ghr clean --repo OWNER/REPO [--days 7] [--yes]"},
+		Options: []string{repositoryFlagHelp, "--days N       Minimum log age in full days (1–3650; default 7).", "--yes          Remove selected old diagnostic logs; otherwise preview only."},
+		Examples: []string{"ghr clean --repo r14r/github-runner", "ghr clean --repo r14r/github-runner --days 14 --yes"},
+		Notes: []string{"No file is deleted without --yes.", "Only old runner diagnostics are selected.", "Docker container stdout/stderr logs are not modified."},
+	},
 	"diskspace": {
 		Summary:     "Inspect, monitor and safely reclaim Docker/Colima disk space.",
 		Description: "Check the Colima data filesystem and Docker storage usage, monitor capacity, or preview safe cleanup. Does not require a repository or installed runner.",
@@ -420,6 +428,7 @@ RUNNER COMMANDS:
   runner              Advanced Docker commands and workflow setup
   actions             List, cancel, delete and clean GitHub Actions workflow runs
   diskspace           Inspect, monitor and clean Docker/Colima disk usage
+  clean                Preview or delete old runner diagnostic logs
   version             Print the CLI version
   help                Show this overview or detailed command help
 
