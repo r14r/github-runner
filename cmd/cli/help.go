@@ -29,6 +29,33 @@ var commandDocs = map[string]commandDoc{
 		Options:     []string{"<command>              Optional command name (e.g. status, install, list-installed).", "<subcommand>           Required for detailed runner subcommand documentation.", "-h, --help             Show help (accepted before any required option)."},
 		Examples:    []string{"ghr help", "ghr help status", "ghr status --help", "ghr help runner setup", "ghr runner setup --help"},
 	},
+	"diskspace": {
+		Summary:     "Inspect, monitor and safely reclaim Docker/Colima disk space.",
+		Description: "Check the Colima data filesystem and Docker storage usage, monitor capacity, or preview safe cleanup. Does not require a repository or installed runner.",
+		Usage: []string{
+			"ghr diskspace --list",
+			"ghr diskspace --monitor [--interval 30s]",
+			"ghr diskspace --clean [--yes]",
+		},
+		Options: []string{
+			"--list                  Show Colima filesystem and Docker disk usage (default).",
+			"--monitor               Periodically recheck disk usage; Ctrl+C to stop.",
+			"--interval DURATION     Monitor interval (default 30s, minimum 1s).",
+			"--clean                 Preview removal of unused build cache and dangling images.",
+			"--yes                   Execute cleanup (valid only with --clean).",
+		},
+		Examples: []string{
+			"ghr diskspace --list",
+			"ghr diskspace --monitor --interval 1m",
+			"ghr diskspace --clean",
+			"ghr diskspace --clean --yes",
+		},
+		Notes: []string{
+			"Cleanup does not remove Docker volumes, registered runners or containers.",
+			"Cleanup is irreversible for removed build caches and dangling images.",
+			"Colima disk checks require Colima; Docker disk usage is also displayed.",
+		},
+	},
 	"version": {
 		Summary:     "Show the version embedded in the installed Go binary.",
 		Description: "Prints the CLI application version; it does not check Docker or GitHub. The GitHub Actions runner version is managed separately.",
@@ -388,7 +415,8 @@ RUNNER COMMANDS:
   uninstall           Safely unregister/remove one or all local runners
   self-uninstall      Remove only the installed CLI and runtime assets
   runner              Advanced Docker commands and workflow setup
-  actions             List, cancel and delete GitHub Actions workflow runs
+  actions             List, cancel, delete and clean GitHub Actions workflow runs
+  diskspace           Inspect, monitor and clean Docker/Colima disk usage
   version             Print the CLI version
   help                Show this overview or detailed command help
 
