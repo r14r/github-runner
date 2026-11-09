@@ -110,7 +110,9 @@ func TestDiskspaceCleanOnlyPrunesCacheAndDanglingImages(t *testing.T) {
 
 func TestDiskspaceDoctorParsers(t *testing.T) {
 	o, err := parseDiskspaceArgs([]string{"--doctor"})
-	if err != nil || o.mode != "doctor" { t.Fatalf("doctor options: %+v %v", o, err) }
+	if err != nil || o.mode != "doctor" {
+		t.Fatalf("doctor options: %+v %v", o, err)
+	}
 	rows, err := readDockerDiskRows("{\"Type\":\"Build Cache\",\"Size\":\"9.8GB\",\"Reclaimable\":\"7.2GB\"}\n")
 	if err != nil || len(rows) != 1 || parseDockerBytes(rows[0].Reclaimable) < 7e9 {
 		t.Fatalf("invalid Docker cache parsing: %+v %v", rows, err)
@@ -124,7 +126,7 @@ func TestDiskspaceDoctorParsers(t *testing.T) {
 func TestDiskspaceDoctorNeverPrunes(t *testing.T) {
 	var calls []string
 	runner := diskspaceRunner{run: func(_ context.Context, name string, args ...string) (string, error) {
-		command := name+" "+strings.Join(args, " ")
+		command := name + " " + strings.Join(args, " ")
 		calls = append(calls, command)
 		if strings.Contains(command, "prune") || strings.Contains(command, "rm ") {
 			return "", errors.New("doctor attempted destructive operation")

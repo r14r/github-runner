@@ -28,26 +28,40 @@ func parseDockerBytes(v interface{}) int64 {
 	case string:
 		n = strings.TrimSpace(strings.Split(n, " (")[0])
 		fields := strings.Fields(n)
-		if len(fields) == 0 { return 0 }
+		if len(fields) == 0 {
+			return 0
+		}
 		val := fields[0]
 		for i, c := range val {
 			if (c < '0' || c > '9') && c != '.' {
 				amount, err := strconv.ParseFloat(val[:i], 64)
-				if err != nil { return 0 }
+				if err != nil {
+					return 0
+				}
 				switch strings.ToLower(val[i:]) {
-				case "b": return int64(amount)
-				case "kb": return int64(amount * 1000)
-				case "mb": return int64(amount * 1e6)
-				case "gb": return int64(amount * 1e9)
-				case "tb": return int64(amount * 1e12)
-				case "kib": return int64(amount * 1024)
-				case "mib": return int64(amount * 1024 * 1024)
-				case "gib": return int64(amount * 1024 * 1024 * 1024)
+				case "b":
+					return int64(amount)
+				case "kb":
+					return int64(amount * 1000)
+				case "mb":
+					return int64(amount * 1e6)
+				case "gb":
+					return int64(amount * 1e9)
+				case "tb":
+					return int64(amount * 1e12)
+				case "kib":
+					return int64(amount * 1024)
+				case "mib":
+					return int64(amount * 1024 * 1024)
+				case "gib":
+					return int64(amount * 1024 * 1024 * 1024)
 				}
 				return 0
 			}
 		}
-		if value, err := strconv.ParseFloat(val, 64); err == nil { return int64(value) }
+		if value, err := strconv.ParseFloat(val, 64); err == nil {
+			return int64(value)
+		}
 	}
 	return 0
 }
@@ -55,17 +69,23 @@ func parseDockerBytes(v interface{}) int64 {
 func readDockerDiskRows(raw string) ([]dockerDiskRow, error) {
 	rows := []dockerDiskRow{}
 	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
-		if strings.TrimSpace(line) == "" { continue }
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
 		var row dockerDiskRow
-		if err := json.Unmarshal([]byte(line), &row); err != nil { return nil, err }
+		if err := json.Unmarshal([]byte(line), &row); err != nil {
+			return nil, err
+		}
 		rows = append(rows, row)
 	}
-	if len(rows) == 0 { return nil, fmt.Errorf("empty docker system df response") }
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("empty docker system df response")
+	}
 	return rows, nil
 }
 
 type directorySize struct {
-	Path string
+	Path  string
 	Bytes int64
 }
 
@@ -73,13 +93,19 @@ func parseDU(raw string) []directorySize {
 	var entries []directorySize
 	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
 		parts := strings.SplitN(line, "\t", 2)
-		if len(parts) != 2 { continue }
+		if len(parts) != 2 {
+			continue
+		}
 		kb, err := strconv.ParseInt(strings.TrimSpace(parts[0]), 10, 64)
-		if err != nil || kb < 0 { continue }
+		if err != nil || kb < 0 {
+			continue
+		}
 		entries = append(entries, directorySize{Path: parts[1], Bytes: kb * 1024})
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Bytes > entries[j].Bytes })
-	if len(entries) > 10 { entries = entries[:10] }
+	if len(entries) > 10 {
+		entries = entries[:10]
+	}
 	return entries
 }
 
@@ -112,19 +138,27 @@ func diskspaceDoctor(ctx context.Context, runner diskspaceRunner, out io.Writer)
 			health := diskHealth(disk)
 			fmt.Fprintf(out, "  %s: %s — %.1f GiB used, %.1f GiB free (%.1f GiB total)\n",
 				health, disk.mount, float64(disk.usedKB)/(1024*1024), float64(disk.availKB)/(1024*1024), float64(disk.totalKB)/(1024*1024))
-			if health != "OK" { recommendations = append(recommendations, "Colima storage is "+health+": prune unused build cache and dangling images; consider a larger Colima disk after checking host free space.") }
+			if health != "OK" {
+				recommendations = append(recommendations, "Colima storage is "+health+": prune unused build cache and dangling images; consider a larger Colima disk after checking host free space.")
+			}
 		}
 	}
 	fmt.Fprintln(out, "\n02: Host filesystem")
 	home, err := os.UserHomeDir()
-	if err != nil { home = "." }
+	if err != nil {
+		home = "."
+	}
 	home = filepath.Clean(home)
 	if raw, ok := report("df", "-Pk", home); ok {
 		if disk, err := parseColimaDF(raw); err == nil {
 			fmt.Fprintf(out, "  %s: %s — %.1f GiB used, %.1f GiB free (%.1f GiB total)\n",
 				diskHealth(disk), disk.mount, float64(disk.usedKB)/(1024*1024), float64(disk.availKB)/(1024*1024), float64(disk.totalKB)/(1024*1024))
-			if diskHealth(disk) != "OK" { recommendations = append(recommendations, "Host filesystem has low free space: review large directories before expanding Colima.") }
-		} else { problems = append(problems, "Host df parse error") }
+			if diskHealth(disk) != "OK" {
+				recommendations = append(recommendations, "Host filesystem has low free space: review large directories before expanding Colima.")
+			}
+		} else {
+			problems = append(problems, "Host df parse error")
+		}
 	}
 
 	fmt.Fprintln(out, "\n03: Docker disk usage and reclaimable cache")
@@ -152,7 +186,9 @@ func diskspaceDoctor(ctx context.Context, runner diskspaceRunner, out io.Writer)
 	roots := []string{home}
 	cloud := "/Users/Shared/CLOUD"
 	if cloud != home {
-		if st, err := os.Stat(cloud); err == nil && st.IsDir() { roots = append(roots, cloud) }
+		if st, err := os.Stat(cloud); err == nil && st.IsDir() {
+			roots = append(roots, cloud)
+		}
 	}
 	var paths []string
 	for _, root := range roots {
@@ -162,7 +198,9 @@ func diskspaceDoctor(ctx context.Context, runner diskspaceRunner, out io.Writer)
 			continue
 		}
 		for _, item := range items {
-			if item.IsDir() { paths = append(paths, filepath.Join(root, item.Name())) }
+			if item.IsDir() {
+				paths = append(paths, filepath.Join(root, item.Name()))
+			}
 		}
 	}
 	var measured []directorySize
@@ -179,15 +217,27 @@ func diskspaceDoctor(ctx context.Context, runner diskspaceRunner, out io.Writer)
 		measured = append(measured, parseDU(raw)...)
 	}
 	sort.Slice(measured, func(i, j int) bool { return measured[i].Bytes > measured[j].Bytes })
-	if len(measured) > 10 { measured = measured[:10] }
-	for i, entry := range measured { fmt.Fprintf(out, "  %2d. %7.2f GiB  %s\n", i+1, bytesGiB(entry.Bytes), entry.Path) }
-	if len(measured) == 0 { problems = append(problems, "No host directories measured") }
+	if len(measured) > 10 {
+		measured = measured[:10]
+	}
+	for i, entry := range measured {
+		fmt.Fprintf(out, "  %2d. %7.2f GiB  %s\n", i+1, bytesGiB(entry.Bytes), entry.Path)
+	}
+	if len(measured) == 0 {
+		problems = append(problems, "No host directories measured")
+	}
 
 	fmt.Fprintln(out, "\nRecommended actions:")
-	for i, rec := range recommendations { fmt.Fprintf(out, "  %d. %s\n", i+1, rec) }
-	if len(recommendations) == 0 { fmt.Fprintln(out, "  No urgent cleanup indicated by available metrics.") }
+	for i, rec := range recommendations {
+		fmt.Fprintf(out, "  %d. %s\n", i+1, rec)
+	}
+	if len(recommendations) == 0 {
+		fmt.Fprintln(out, "  No urgent cleanup indicated by available metrics.")
+	}
 	fmt.Fprintln(out, "  Preview the safe cleanup with: ghr diskspace --clean")
 	fmt.Fprintln(out, "  Execute only after reviewing: ghr diskspace --clean --yes")
-	if len(problems) != 0 { fmt.Fprintf(out, "  NOTE: %d diagnostic(s) unavailable; findings may be incomplete.\n", len(problems)) }
+	if len(problems) != 0 {
+		fmt.Fprintf(out, "  NOTE: %d diagnostic(s) unavailable; findings may be incomplete.\n", len(problems))
+	}
 	return nil
 }

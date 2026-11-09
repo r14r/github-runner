@@ -30,12 +30,12 @@ var commandDocs = map[string]commandDoc{
 		Examples:    []string{"ghr help", "ghr help status", "ghr status --help", "ghr help runner setup", "ghr runner setup --help"},
 	},
 	"clean": {
-		Summary: "Preview or remove old runner diagnostic log files.",
+		Summary:     "Preview or remove old runner diagnostic log files.",
 		Description: "Selects only Runner_*.log and Worker_*.log under the specified runner's /runner/_diag. The container must be running. This does not remove registrations, workspaces, volumes or Docker log history.",
-		Usage: []string{"ghr clean --repo OWNER/REPO [--days 7] [--yes]"},
-		Options: []string{repositoryFlagHelp, "--days N       Minimum log age in full days (1–3650; default 7).", "--yes          Remove selected old diagnostic logs; otherwise preview only."},
-		Examples: []string{"ghr clean --repo r14r/github-runner", "ghr clean --repo r14r/github-runner --days 14 --yes"},
-		Notes: []string{"No file is deleted without --yes.", "Only old runner diagnostics are selected.", "Docker container stdout/stderr logs are not modified."},
+		Usage:       []string{"ghr clean --repo OWNER/REPO [--days 7] [--yes]"},
+		Options:     []string{repositoryFlagHelp, "--days N       Minimum log age in full days (1–3650; default 7).", "--yes          Remove selected old diagnostic logs; otherwise preview only."},
+		Examples:    []string{"ghr clean --repo r14r/github-runner", "ghr clean --repo r14r/github-runner --days 14 --yes"},
+		Notes:       []string{"No file is deleted without --yes.", "Only old runner diagnostics are selected.", "Docker container stdout/stderr logs are not modified."},
 	},
 	"diskspace": {
 		Summary:     "Inspect, monitor and safely reclaim Docker/Colima disk space.",
@@ -57,7 +57,7 @@ var commandDocs = map[string]commandDoc{
 		Examples: []string{
 			"ghr diskspace --list",
 			"ghr diskspace --doctor",
-			"ghr diskspace --monitor --interval 1m"
+			"ghr diskspace --monitor --interval 1m",
 			"ghr diskspace --clean",
 			"ghr diskspace --clean --yes",
 		},
