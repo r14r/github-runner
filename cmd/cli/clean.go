@@ -68,9 +68,16 @@ func runnerLogsCleanCommand(ctx context.Context, args []string, runner diskspace
 		"-type", "f", "(", "-name", "Runner_*.log", "-o", "-name", "Worker_*.log", ")",
 		"-mmin", "+" + minutes,
 	}
+	state, inspectErr := runner.run(ctx, "docker", "inspect", "--format", "{{.State.Status}}", r.Container)
+	if inspectErr != nil {
+		return fmt.Errorf("runner container %s was not found or Docker is unavailable. Hint: run `ghr status --repo %s` and check `docker ps -a`", r.Container, o.repo)
+	}
+	if strings.TrimSpace(state) != "running" {
+		return fmt.Errorf("runner container %s is %s, not running. Hint: start it with `ghr start --repo %s`, then retry `ghr clean`", r.Container, strings.TrimSpace(state), o.repo)
+	}
 	files, err := runner.run(ctx, "docker", append(append([]string{}, findArgs...), "-print")...)
 	if err != nil {
-		return fmt.Errorf("cannot inspect runner logs in %s (container must be running): %w", r.Container, err)
+		return fmt.Errorf("unable to inspect diagnostic logs for %s. Hint: check container status with `ghr status --repo %s`; details: %w", r.Container, o.repo, err)
 	}
 	fmt.Fprintf(out, "Runner: %s\nRetention: %d days\n", o.repo, o.days)
 	trimmed := strings.TrimSpace(files)
