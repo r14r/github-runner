@@ -310,3 +310,17 @@ ghr diskspace --clean --yes                  # delete unused build cache and dan
 ```
 
 Storage conditions are reported as OK, WARNING (<15 GiB free or >=85% used), or CRITICAL (<5 GiB free or >=95% used). The clean mode never removes Docker volumes, registered runners, containers, or images referenced by containers. It does remove build cache and dangling images and may require rebuilding them later. On hosts without Colima, the command reports the missing Colima metric but still shows Docker storage usage. `--clean` defaults to a dry run; `--yes` is required to make changes.
+
+
+### CI failures versus runner broker diagnostics
+
+Runner diagnostic messages such as `BrokerServer TaskCanceledException`, `SocketException (125): Operation canceled`, and `Get messages has been cancelled using local token source` can occur during normal transitions between **Online** and **Busy**. When a subsequent job is acknowledged and executed, these messages alone do not prove a persistent network fault. Do not hide them without checking job outcomes.
+
+For an actual `Job ... completed with result: Failed`, inspect the workflow job steps and logs, not only `/runner/_diag`:
+
+```bash
+gh run list --repo r14r/github-runner --limit 10
+gh run view RUN_ID --repo r14r/github-runner --log-failed
+```
+
+The `go` workflow job uses the repository-specific self-hosted runner. The `generic-image` job uses a GitHub-hosted Ubuntu runner with Docker available; this avoids granting the local runner unrestricted access to the Colima Docker daemon. If a separate workflow must build containers on the self-hosted runner, an administrator must explicitly opt in to Docker daemon access and understand the associated privileges.

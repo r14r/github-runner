@@ -11,8 +11,8 @@ jobs:
   go:
     runs-on: [self-hosted, Linux, X64, repo-r14r-github-runner]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: Check Go formatting (read-only)
@@ -38,7 +38,7 @@ jobs:
         run: |
           just bootstrap
           just ci
-          test -z "$(git status --porcelain -- cmd internal)"
+          test -z "$(git status --porcelain -- cmd src)"
           just build
           test -z "$(git status --porcelain -- cmd internal)"
           INSTALL_DIR="$RUNNER_TEMP/bin" just install
@@ -62,13 +62,16 @@ jobs:
             --repo "$TARGET_REPOSITORY" --output "$RUNNER_TEMP/toolchain.yaml"
           grep -Fq "repository: \"$TARGET_REPOSITORY\"" "$RUNNER_TEMP/toolchain.yaml"
           grep -Fq 'name: "go"' "$RUNNER_TEMP/toolchain.yaml"
-          grep -Fq 'actions/setup-go@v5' "$RUNNER_TEMP/toolchain.yaml"
+          grep -Fq 'actions/setup-go@v6' "$RUNNER_TEMP/toolchain.yaml"
 
+  # Image building requires a Docker daemon. The default self-hosted runner
+  # intentionally has no docker.sock mount (granting it is host-root equivalent).
+  # Use an isolated GitHub-hosted builder instead.
   generic-image:
-    runs-on: [self-hosted, Linux, X64, repo-r14r-github-runner]
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build repository-neutral toolchain image
         run: |
           docker build --platform linux/amd64 --target toolchain \
