@@ -35,7 +35,7 @@ func TestRunnerLogsCleanPreviewAndDeletion(t *testing.T) {
 		call := name + " " + strings.Join(args, " ")
 		calls = append(calls, call)
 		if strings.Contains(call, "inspect --format") {
-			return "running\\n", nil
+			return "running\n", nil
 		}
 		if strings.Contains(call, "-delete") {
 			return "", nil
