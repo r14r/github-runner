@@ -17,6 +17,8 @@ func TestRunnerLogsCleanArguments(t *testing.T) {
 		{"--repo", "owner/repo", "--days", "bad"},
 		{"--repo", "owner/repo", "--days"},
 		{"--repo", "owner/repo", "--bogus"},
+		{"--repo", "owner/repo", "--all", "--days", "1"},
+		{"--repo", "owner/repo", "--all", "--all"},
 	} {
 		if _, err := parseRunnerLogsCleanArgs(args); err == nil {
 			t.Errorf("accepted %v", args)
@@ -86,5 +88,40 @@ func TestRunnerLogsCleanMissingContainerHint(t *testing.T) {
 	err := runnerLogsCleanCommand(context.Background(), []string{"--repo", "owner/repo"}, runner, &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "docker ps -a") {
 		t.Fatalf("expected missing-container hint, got %v", err)
+	}
+}
+
+func TestRunnerLogsCleanAllPreviewAndExecution(t *testing.T) {
+	t.Setenv("RUNNER_REPO", "")
+	var calls []string
+	runner := diskspaceRunner{run: func(_ context.Context, name string, args ...string) (string, error) {
+		call := name + " " + strings.Join(args, " ")
+		calls = append(calls, call)
+		if strings.Contains(call, "inspect --format") {
+			return "running\n", nil
+		}
+		if strings.Contains(call, "-delete") {
+			return "", nil
+		}
+		return "/runner/_diag/Runner_recent.log\n/runner/_diag/Worker_recent.log\n", nil
+	}}
+	var out bytes.Buffer
+	args := []string{"--repo", "owner/repo", "--all"}
+	if err := runnerLogsCleanCommand(context.Background(), args, runner, &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 || strings.Contains(strings.Join(calls, " "), "-delete") ||
+		strings.Contains(strings.Join(calls, " "), "-mmin") ||
+		!strings.Contains(out.String(), "DRY RUN") {
+		t.Fatalf("--all preview unexpectedly changed files: %v %s", calls, out.String())
+	}
+	calls = nil
+	if err := runnerLogsCleanCommand(context.Background(), append(args, "--yes"), runner, &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 3 || !strings.Contains(calls[2], "-delete") ||
+		strings.Contains(calls[2], "-mmin") ||
+		!strings.Contains(calls[2], "/runner/_diag") {
+		t.Fatalf("--all execution used incorrect scope: %v", calls)
 	}
 }
