@@ -324,3 +324,7 @@ gh run view RUN_ID --repo r14r/github-runner --log-failed
 ```
 
 The `go` workflow job uses the repository-specific self-hosted runner. The `generic-image` job uses a GitHub-hosted Ubuntu runner with Docker available; this avoids granting the local runner unrestricted access to the Colima Docker daemon. If a separate workflow must build containers on the self-hosted runner, an administrator must explicitly opt in to Docker daemon access and understand the associated privileges.
+
+### Remove all runner diagnostic logs
+
+`ghr clean --repo OWNER/REPO --all` previews every `Runner_*.log` and `Worker_*.log` under `/runner/_diag`, irrespective of its modification time. `ghr clean --repo OWNER/REPO --all --yes` deletes them. The `--all` option cannot be combined with `--days`. It does **not** delete runner registrations, volumes, workspaces, or `docker logs` output. Active diagnostic logs may be recreated or remain open by the running runner; avoid using `--all --yes` during active jobs.
