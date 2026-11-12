@@ -251,3 +251,43 @@ func TestQuietGitCapturesFailureOnly(t *testing.T) {
 		t.Errorf("expected diagnostic error, got %v", err)
 	}
 }
+
+func TestPlaywrightChromiumDependenciesAreProvisionedInRunnerImage(t *testing.T) {
+	tools := map[string]toolRequirement{}
+	actions := map[string]bool{}
+	warnings := []string{}
+	analyzeWorkflowText(".github/workflows/ci.yml", `jobs:
+  e2e:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser without root
+        run: npx playwright install --only-shell chromium
+`, tools, actions, &warnings)
+	if _, ok := tools["playwright"]; !ok {
+		t.Fatal("Playwright command was not discovered")
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected workflow warnings: %v", warnings)
+	}
+	toolList := []toolRequirement{}
+	for _, tool := range tools {
+		toolList = append(toolList, tool)
+	}
+	manifest := toolchainManifest{Repository: "example-org/web", Profile: "toolchain", Tools: toolList}
+	args, err := toolchainBuildArgs(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	for _, pkg := range []string{"libnss3", "libgbm1", "libasound2t64", "libatk-bridge2.0-0t64", "fonts-liberation"} {
+		if !strings.Contains(joined, pkg) {
+			t.Errorf("missing chromium system library %q from %q", pkg, joined)
+		}
+	}
+	if err := validateProfile(toolchainManifest{Profile: "runner-base", Tools: toolList}); err == nil {
+		t.Fatal("runner-base must not claim Chromium system libraries")
+	}
+}
