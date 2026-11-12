@@ -328,3 +328,25 @@ The `go` workflow job uses the repository-specific self-hosted runner. The `gene
 ### Remove all runner diagnostic logs
 
 `ghr clean --repo OWNER/REPO --all` previews every `Runner_*.log` and `Worker_*.log` under `/runner/_diag`, irrespective of its modification time. `ghr clean --repo OWNER/REPO --all --yes` deletes them. The `--all` option cannot be combined with `--days`. It does **not** delete runner registrations, volumes, workspaces, or `docker logs` output. Active diagnostic logs may be recreated or remain open by the running runner; avoid using `--all --yes` during active jobs.
+
+### Playwright Chromium on self-hosted Docker runners
+
+A job containing `npx playwright install chromium` (including `--only-shell`)
+causes the `toolchain` profile to provision Ubuntu 24.04 Chromium runtime
+libraries at **image build time**. Browser binaries are still installed by
+Playwright at job time using the version from the checked-out repository.
+Jobs must use `npx playwright install chromium`, **not** `--with-deps`, because
+the runner executes unprivileged and cannot invoke `apt-get` or `su`.
+
+After updating this CLI and the target workflow, rebuild the repository-scoped
+image and refresh the *idle* runner to pick up its new system dependencies:
+
+```sh
+ghr build --repo r14r/website-builder
+ghr status --repo r14r/website-builder
+ghr refresh --repo r14r/website-builder
+ghr doctor --repo r14r/website-builder
+```
+
+Do not refresh a busy runner. Other repositories without Playwright steps do
+not receive the extra libraries.
